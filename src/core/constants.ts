@@ -40,6 +40,12 @@ export const MONSTER_CONFIGS: Record<MonsterType, MonsterConfig> = {
 // Nutrient depletion ratio when digging (30% lost)
 export const NUTRIENT_DEPLETION_RATIO = 0.3
 
+// Maximum nutrients a Nijirigoke can carry
+export const NUTRIENT_CARRY_CAPACITY = 10
+
+// Threshold for Nijirigoke to release nutrients (release when >= this amount)
+export const NUTRIENT_RELEASE_THRESHOLD = 2
+
 // Hunger threshold (30% of maxLife)
 export const HUNGER_THRESHOLD_RATIO = 0.3
 

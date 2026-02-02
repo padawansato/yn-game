@@ -1,10 +1,10 @@
-import type { GameEvent, Monster, Nutrient, Position } from './types'
+import type { Cell, GameEvent, Monster, Position } from './types'
+import { releaseNutrientsOnDeath } from './nutrient'
 
 export interface PredationResult {
   predator: Monster
   prey: Monster
   events: GameEvent[]
-  droppedNutrient: Nutrient | null
 }
 
 /**
@@ -44,8 +44,7 @@ export function checkSameCellPredation(
  */
 export function applyPredation(
   predator: Monster,
-  prey: Monster,
-  nutrients: Nutrient[]
+  prey: Monster
 ): PredationResult {
   const events: GameEvent[] = []
 
@@ -68,43 +67,29 @@ export function applyPredation(
     cause: 'predation',
   })
 
-  // Check if prey was carrying nutrient
-  let droppedNutrient: Nutrient | null = null
-  if (prey.carryingNutrient !== null) {
-    const carriedNutrient = nutrients.find((n) => n.id === prey.carryingNutrient)
-    if (carriedNutrient) {
-      droppedNutrient = {
-        ...carriedNutrient,
-        position: { ...prey.position },
-        carriedBy: null,
-      }
-    }
-  }
-
   return {
     predator: updatedPredator,
     prey,
     events,
-    droppedNutrient,
   }
 }
 
 /**
  * Process all predation events for monsters at the same positions
- * Returns updated monster list, updated nutrients, and events
+ * Returns updated monster list, updated grid, and events
  */
 export function processPredation(
   monsters: Monster[],
-  nutrients: Nutrient[]
+  grid: Cell[][]
 ): {
   monsters: Monster[]
-  nutrients: Nutrient[]
+  grid: Cell[][]
   events: GameEvent[]
 } {
   const events: GameEvent[] = []
   const deadMonsterIds = new Set<string>()
   const updatedMonsters = new Map<string, Monster>()
-  let updatedNutrients = [...nutrients]
+  let currentGrid = grid
 
   // Find all unique positions with multiple monsters
   const positionMap = new Map<string, Monster[]>()
@@ -129,16 +114,15 @@ export function processPredation(
 
         if (canPredate(potentialPredator, potentialPrey)) {
           const predator = updatedMonsters.get(potentialPredator.id) || potentialPredator
-          const result = applyPredation(predator, potentialPrey, updatedNutrients)
+          const result = applyPredation(predator, potentialPrey)
 
           updatedMonsters.set(potentialPredator.id, result.predator)
           deadMonsterIds.add(potentialPrey.id)
           events.push(...result.events)
 
-          if (result.droppedNutrient) {
-            updatedNutrients = updatedNutrients.map((n) =>
-              n.id === result.droppedNutrient!.id ? result.droppedNutrient! : n
-            )
+          // Release prey's nutrients to adjacent soil
+          if (potentialPrey.carryingNutrient > 0) {
+            currentGrid = releaseNutrientsOnDeath(potentialPrey, currentGrid)
           }
         }
       }
@@ -152,7 +136,7 @@ export function processPredation(
 
   return {
     monsters: finalMonsters,
-    nutrients: updatedNutrients,
+    grid: currentGrid,
     events,
   }
 }

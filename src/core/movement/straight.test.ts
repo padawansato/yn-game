@@ -1,12 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import type { Cell, Monster, Nutrient } from '../types'
+import type { Cell, Monster } from '../types'
 import {
   getForwardPosition,
   isValidMove,
   getTurnDirections,
   handleWallCollision,
   calculateStraightMove,
-  findNutrientAtPosition,
 } from './straight'
 
 function createGrid(width: number, height: number, type: Cell['type'] = 'empty'): Cell[][] {
@@ -26,7 +25,7 @@ function createMonster(overrides: Partial<Monster> = {}): Monster {
     maxLife: 10,
     attack: 0,
     predationTargets: [],
-    carryingNutrient: null,
+    carryingNutrient: 0,
     nestPosition: null,
     ...overrides,
   }
@@ -71,9 +70,9 @@ describe('Straight Movement', () => {
       expect(isValidMove({ x: 2, y: 5 }, grid)).toBe(false)
     })
 
-    it('should return true for soil cell', () => {
+    it('should return false for soil cell (soil blocks movement)', () => {
       const grid = createGrid(5, 5, 'soil')
-      expect(isValidMove({ x: 2, y: 2 }, grid)).toBe(true)
+      expect(isValidMove({ x: 2, y: 2 }, grid)).toBe(false)
     })
   })
 
@@ -122,38 +121,12 @@ describe('Straight Movement', () => {
     })
   })
 
-  describe('findNutrientAtPosition', () => {
-    it('should find nutrient at position', () => {
-      const nutrients: Nutrient[] = [
-        { id: 'n1', position: { x: 3, y: 3 }, amount: 5, carriedBy: null },
-      ]
-      const found = findNutrientAtPosition({ x: 3, y: 3 }, nutrients)
-      expect(found?.id).toBe('n1')
-    })
-
-    it('should not find carried nutrient', () => {
-      const nutrients: Nutrient[] = [
-        { id: 'n1', position: { x: 3, y: 3 }, amount: 5, carriedBy: 'monster-1' },
-      ]
-      const found = findNutrientAtPosition({ x: 3, y: 3 }, nutrients)
-      expect(found).toBeUndefined()
-    })
-
-    it('should return undefined if no nutrient at position', () => {
-      const nutrients: Nutrient[] = [
-        { id: 'n1', position: { x: 1, y: 1 }, amount: 5, carriedBy: null },
-      ]
-      const found = findNutrientAtPosition({ x: 3, y: 3 }, nutrients)
-      expect(found).toBeUndefined()
-    })
-  })
-
   describe('calculateStraightMove', () => {
     it('should move forward when path is clear', () => {
       const grid = createGrid(5, 5, 'empty')
       const monster = createMonster({ position: { x: 2, y: 2 }, direction: 'right' })
 
-      const result = calculateStraightMove(monster, grid, [])
+      const result = calculateStraightMove(monster, grid)
 
       expect(result.position).toEqual({ x: 3, y: 2 })
       expect(result.direction).toBe('right')
@@ -164,62 +137,21 @@ describe('Straight Movement', () => {
       grid[2][3].type = 'wall' // wall in front
 
       const monster = createMonster({ position: { x: 2, y: 2 }, direction: 'right' })
-      const result = calculateStraightMove(monster, grid, [], () => 0)
+      const result = calculateStraightMove(monster, grid, () => 0)
 
       expect(result.position).toEqual({ x: 2, y: 2 }) // stays in place
       expect(result.direction).not.toBe('right') // turned
     })
 
-    it('should pickup nutrient when not carrying', () => {
+    it('should turn when hitting soil', () => {
       const grid = createGrid(5, 5, 'empty')
-      const nutrients: Nutrient[] = [
-        { id: 'n1', position: { x: 3, y: 2 }, amount: 5, carriedBy: null },
-      ]
-      const monster = createMonster({
-        type: 'nijirigoke',
-        position: { x: 2, y: 2 },
-        direction: 'right',
-        carryingNutrient: null,
-      })
+      grid[2][3].type = 'soil' // soil in front
 
-      const result = calculateStraightMove(monster, grid, nutrients)
+      const monster = createMonster({ position: { x: 2, y: 2 }, direction: 'right' })
+      const result = calculateStraightMove(monster, grid, () => 0)
 
-      expect(result.nutrientInteraction).toBe('pickup')
-      expect(result.nutrientId).toBe('n1')
-    })
-
-    it('should deposit nutrient when carrying and target is empty', () => {
-      const grid = createGrid(5, 5, 'empty')
-      const nutrients: Nutrient[] = [
-        { id: 'n1', position: { x: 0, y: 0 }, amount: 5, carriedBy: 'monster-1' },
-      ]
-      const monster = createMonster({
-        type: 'nijirigoke',
-        position: { x: 2, y: 2 },
-        direction: 'right',
-        carryingNutrient: 'n1',
-      })
-
-      const result = calculateStraightMove(monster, grid, nutrients)
-
-      expect(result.nutrientInteraction).toBe('deposit')
-      expect(result.nutrientId).toBe('n1')
-    })
-
-    it('should not interact with nutrients if not Nijirigoke', () => {
-      const grid = createGrid(5, 5, 'empty')
-      const nutrients: Nutrient[] = [
-        { id: 'n1', position: { x: 3, y: 2 }, amount: 5, carriedBy: null },
-      ]
-      const monster = createMonster({
-        type: 'gajigajimushi',
-        position: { x: 2, y: 2 },
-        direction: 'right',
-      })
-
-      const result = calculateStraightMove(monster, grid, nutrients)
-
-      expect(result.nutrientInteraction).toBeNull()
+      expect(result.position).toEqual({ x: 2, y: 2 }) // stays in place
+      expect(result.direction).not.toBe('right') // turned
     })
   })
 })

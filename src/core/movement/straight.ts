@@ -1,4 +1,4 @@
-import type { Cell, Direction, Monster, Nutrient, Position } from '../types'
+import type { Cell, Direction, Monster, Position } from '../types'
 
 /**
  * Get the position in front of the monster
@@ -17,12 +17,13 @@ export function getForwardPosition(position: Position, direction: Direction): Po
 }
 
 /**
- * Check if a position is valid and not a wall
+ * Check if a position is valid for movement
+ * Only empty cells are passable (not wall, not soil)
  */
 export function isValidMove(position: Position, grid: Cell[][]): boolean {
   if (position.y < 0 || position.y >= grid.length) return false
   if (position.x < 0 || position.x >= grid[0].length) return false
-  return grid[position.y][position.x].type !== 'wall'
+  return grid[position.y][position.x].type === 'empty'
 }
 
 /**
@@ -69,31 +70,16 @@ export function handleWallCollision(
 }
 
 /**
- * Find nutrient at position
- */
-export function findNutrientAtPosition(
-  position: Position,
-  nutrients: Nutrient[]
-): Nutrient | undefined {
-  return nutrients.find(
-    (n) => n.position.x === position.x && n.position.y === position.y && n.carriedBy === null
-  )
-}
-
-/**
  * Calculate next move for straight pattern (Nijirigoke)
- * Returns new position and direction, plus nutrient interaction result
+ * Returns new position and direction
  */
 export function calculateStraightMove(
   monster: Monster,
   grid: Cell[][],
-  nutrients: Nutrient[],
   randomFn: () => number = Math.random
 ): {
   position: Position
   direction: Direction
-  nutrientInteraction: 'pickup' | 'deposit' | null
-  nutrientId: string | null
 } {
   const forwardPos = getForwardPosition(monster.position, monster.direction)
 
@@ -104,33 +90,11 @@ export function calculateStraightMove(
     return {
       position: monster.position, // Stay in place this tick
       direction: newDirection,
-      nutrientInteraction: null,
-      nutrientId: null,
-    }
-  }
-
-  // Check for nutrient interaction at new position
-  let nutrientInteraction: 'pickup' | 'deposit' | null = null
-  let nutrientId: string | null = null
-
-  if (monster.type === 'nijirigoke') {
-    const nutrientAtTarget = findNutrientAtPosition(forwardPos, nutrients)
-
-    if (monster.carryingNutrient === null && nutrientAtTarget) {
-      // Pick up nutrient
-      nutrientInteraction = 'pickup'
-      nutrientId = nutrientAtTarget.id
-    } else if (monster.carryingNutrient !== null && !nutrientAtTarget) {
-      // Deposit nutrient (only if no nutrient already there)
-      nutrientInteraction = 'deposit'
-      nutrientId = monster.carryingNutrient
     }
   }
 
   return {
     position: forwardPos,
     direction: monster.direction,
-    nutrientInteraction,
-    nutrientId,
   }
 }

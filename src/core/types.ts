@@ -24,16 +24,8 @@ export interface Monster {
   maxLife: number
   attack: number
   predationTargets: MonsterType[]
-  carryingNutrient: string | null // Nutrient ID or null
+  carryingNutrient: number // Amount of nutrients being carried (0 = none)
   nestPosition: Position | null // For stationary pattern
-}
-
-// Nutrient entity
-export interface Nutrient {
-  id: string
-  position: Position
-  amount: number
-  carriedBy: string | null // Monster ID or null if on ground
 }
 
 // Cell types
@@ -49,7 +41,6 @@ export interface Cell {
 export interface GameState {
   grid: Cell[][]
   monsters: Monster[]
-  nutrients: Nutrient[]
   totalInitialNutrients: number
 }
 
@@ -58,6 +49,6 @@ export type GameEvent =
   | { type: 'MONSTER_SPAWNED'; monster: Monster }
   | { type: 'MONSTER_DIED'; monster: Monster; cause: 'starvation' | 'predation' }
   | { type: 'PREDATION'; predator: Monster; prey: Monster; position: Position }
-  | { type: 'NUTRIENT_PICKED'; monster: Monster; nutrient: Nutrient }
-  | { type: 'NUTRIENT_DROPPED'; monster: Monster; nutrient: Nutrient }
+  | { type: 'NUTRIENT_ABSORBED'; monster: Monster; amount: number; fromPosition: Position }
+  | { type: 'NUTRIENT_RELEASED'; monster: Monster; amount: number; toPosition: Position }
   | { type: 'WORLD_DYING'; remainingNutrients: number }

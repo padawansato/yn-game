@@ -1,8 +1,8 @@
-import type { Cell, GameEvent, GameState, Monster, Nutrient, Position } from './types'
+import type { Cell, GameEvent, GameState, Monster, Position } from './types'
 import { MOVEMENT_LIFE_COST, MONSTER_CONFIGS } from './constants'
 import { calculateMove, MoveResult } from './movement'
 import { processPredation } from './predation'
-import { pickupNutrient, depositNutrient, depleteOnDig, generateNutrientId } from './nutrient'
+import { depleteOnDig, absorbNutrient, releaseNutrient, releaseNutrientsOnDeath } from './nutrient'
 
 let monsterIdCounter = 0
 
@@ -28,7 +28,7 @@ export function calculateAllMoves(
 ): PlannedMove[] {
   return state.monsters.map((monster) => ({
     monster,
-    result: calculateMove(monster, state.grid, state.nutrients, state.monsters, randomFn),
+    result: calculateMove(monster, state.grid, state.monsters, randomFn),
   }))
 }
 
@@ -108,45 +108,72 @@ export function resolveConflicts(
  * Apply all resolved movements to monsters
  */
 export function applyMovements(
-  plannedMoves: PlannedMove[],
-  nutrients: Nutrient[]
-): { monsters: Monster[]; nutrients: Nutrient[]; events: GameEvent[] } {
+  plannedMoves: PlannedMove[]
+): { monsters: Monster[] } {
+  const movedMonsters = plannedMoves.map((move) => ({
+    ...move.monster,
+    position: move.result.position,
+    direction: move.result.direction,
+    nestPosition: move.result.nestPosition ?? move.monster.nestPosition,
+  }))
+
+  return { monsters: movedMonsters }
+}
+
+/**
+ * Process nutrient absorption and release for all Nijirigoke
+ */
+export function processNutrientInteractions(
+  monsters: Monster[],
+  grid: Cell[][]
+): { monsters: Monster[]; grid: Cell[][]; events: GameEvent[] } {
   const events: GameEvent[] = []
-  let updatedNutrients = [...nutrients]
+  let currentGrid = grid
+  const updatedMonsters: Monster[] = []
 
-  const movedMonsters = plannedMoves.map((move) => {
-    let monster = {
-      ...move.monster,
-      position: move.result.position,
-      direction: move.result.direction,
-      nestPosition: move.result.nestPosition ?? move.monster.nestPosition,
+  for (const monster of monsters) {
+    if (monster.type !== 'nijirigoke') {
+      updatedMonsters.push(monster)
+      continue
     }
 
-    // Handle nutrient interactions for Nijirigoke
-    if (move.result.nutrientInteraction === 'pickup' && move.result.nutrientId) {
-      const nutrient = updatedNutrients.find((n) => n.id === move.result.nutrientId)
-      if (nutrient) {
-        const result = pickupNutrient(monster, nutrient)
-        monster = result.monster
-        updatedNutrients = updatedNutrients.map((n) =>
-          n.id === nutrient.id ? result.nutrient : n
-        )
-        events.push({ type: 'NUTRIENT_PICKED', monster, nutrient: result.nutrient })
-      }
-    } else if (move.result.nutrientInteraction === 'deposit' && move.result.nutrientId) {
-      const result = depositNutrient(monster, updatedNutrients)
-      monster = result.monster
-      updatedNutrients = result.nutrients
-      const droppedNutrient = updatedNutrients.find((n) => n.id === move.result.nutrientId)
-      if (droppedNutrient) {
-        events.push({ type: 'NUTRIENT_DROPPED', monster, nutrient: droppedNutrient })
-      }
+    // Try to absorb first
+    const absorbResult = absorbNutrient(monster, currentGrid)
+    if (absorbResult.monster.carryingNutrient > monster.carryingNutrient) {
+      // Successfully absorbed
+      const absorbed = absorbResult.monster.carryingNutrient - monster.carryingNutrient
+      events.push({
+        type: 'NUTRIENT_ABSORBED',
+        monster: absorbResult.monster,
+        amount: absorbed,
+        fromPosition: monster.position,
+      })
+      currentGrid = absorbResult.grid
+      updatedMonsters.push(absorbResult.monster)
+      continue
     }
 
-    return monster
-  })
+    // Try to release if not absorbed
+    const releaseResult = releaseNutrient(monster, currentGrid)
+    if (releaseResult.monster.carryingNutrient < monster.carryingNutrient) {
+      // Successfully released
+      const released = monster.carryingNutrient - releaseResult.monster.carryingNutrient
+      events.push({
+        type: 'NUTRIENT_RELEASED',
+        monster: releaseResult.monster,
+        amount: released,
+        toPosition: monster.position,
+      })
+      currentGrid = releaseResult.grid
+      updatedMonsters.push(releaseResult.monster)
+      continue
+    }
 
-  return { monsters: movedMonsters, nutrients: updatedNutrients, events }
+    // No interaction
+    updatedMonsters.push(monster)
+  }
+
+  return { monsters: updatedMonsters, grid: currentGrid, events }
 }
 
 /**
@@ -154,9 +181,11 @@ export function applyMovements(
  */
 export function decreaseLifeForMoved(
   monsters: Monster[],
-  originalPositions: Map<string, Position>
-): { monsters: Monster[]; events: GameEvent[] } {
+  originalPositions: Map<string, Position>,
+  grid: Cell[][]
+): { monsters: Monster[]; grid: Cell[][]; events: GameEvent[] } {
   const events: GameEvent[] = []
+  let currentGrid = grid
 
   const updated = monsters
     .map((monster) => {
@@ -170,6 +199,8 @@ export function decreaseLifeForMoved(
       const newLife = monster.life - MOVEMENT_LIFE_COST
       if (newLife <= 0) {
         events.push({ type: 'MONSTER_DIED', monster, cause: 'starvation' })
+        // Release nutrients on death
+        currentGrid = releaseNutrientsOnDeath(monster, currentGrid)
         return null
       }
 
@@ -177,7 +208,7 @@ export function decreaseLifeForMoved(
     })
     .filter((m): m is Monster => m !== null)
 
-  return { monsters: updated, events }
+  return { monsters: updated, grid: currentGrid, events }
 }
 
 /**
@@ -202,22 +233,29 @@ export function tick(
   const resolvedMoves = resolveConflicts(plannedMoves, randomFn)
 
   // 3. Apply movements
-  const moveResult = applyMovements(resolvedMoves, state.nutrients)
-  allEvents.push(...moveResult.events)
+  const moveResult = applyMovements(resolvedMoves)
 
   // 4. Process predation (same cell)
-  const predationResult = processPredation(moveResult.monsters, moveResult.nutrients)
+  const predationResult = processPredation(moveResult.monsters, state.grid)
   allEvents.push(...predationResult.events)
 
-  // 5. Decrease life for moved monsters
-  const lifeResult = decreaseLifeForMoved(predationResult.monsters, originalPositions)
+  // 5. Decrease life for moved monsters (and release nutrients on death)
+  const lifeResult = decreaseLifeForMoved(
+    predationResult.monsters,
+    originalPositions,
+    predationResult.grid
+  )
   allEvents.push(...lifeResult.events)
+
+  // 6. Process nutrient absorption/release for Nijirigoke
+  const nutrientResult = processNutrientInteractions(lifeResult.monsters, lifeResult.grid)
+  allEvents.push(...nutrientResult.events)
 
   return {
     state: {
       ...state,
-      monsters: lifeResult.monsters,
-      nutrients: predationResult.nutrients,
+      grid: nutrientResult.grid,
+      monsters: nutrientResult.monsters,
     },
     events: allEvents,
   }
@@ -249,7 +287,7 @@ export function dig(
 
   const events: GameEvent[] = []
 
-  // Calculate available nutrients (70% of soil nutrients)
+  // Calculate available nutrients (70% of soil nutrients, 30% lost)
   const availableNutrients = depleteOnDig(cell.nutrientAmount)
 
   // Update grid - soil becomes empty
@@ -276,20 +314,8 @@ export function dig(
     maxLife: config.life,
     attack: config.attack,
     predationTargets: [...config.predationTargets],
-    carryingNutrient: null,
+    carryingNutrient: 0, // Starts with no nutrients
     nestPosition: null,
-  }
-
-  // Create nutrient if there was any
-  let newNutrients = [...state.nutrients]
-  if (availableNutrients > 0) {
-    const nutrient: Nutrient = {
-      id: generateNutrientId(),
-      position: { ...position },
-      amount: availableNutrients,
-      carriedBy: null,
-    }
-    newNutrients = [...newNutrients, nutrient]
   }
 
   events.push({ type: 'MONSTER_SPAWNED', monster: newMonster })
@@ -299,7 +325,6 @@ export function dig(
       ...state,
       grid: newGrid,
       monsters: [...state.monsters, newMonster],
-      nutrients: newNutrients,
     },
     events,
   }
@@ -333,7 +358,6 @@ export function createGameState(
   return {
     grid,
     monsters: [],
-    nutrients: [],
     totalInitialNutrients: 0,
   }
 }

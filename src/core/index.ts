@@ -5,7 +5,6 @@ export type {
   MovementPattern,
   MonsterType,
   Monster,
-  Nutrient,
   CellType,
   Cell,
   GameState,
@@ -16,6 +15,8 @@ export type {
 export {
   MONSTER_CONFIGS,
   NUTRIENT_DEPLETION_RATIO,
+  NUTRIENT_CARRY_CAPACITY,
+  NUTRIENT_RELEASE_THRESHOLD,
   HUNGER_THRESHOLD_RATIO,
   MOVEMENT_LIFE_COST,
   DEFAULT_GRID_WIDTH,
@@ -27,12 +28,13 @@ export type { MonsterConfig } from './constants'
 export {
   initializeNutrients,
   depleteOnDig,
-  pickupNutrient,
-  depositNutrient,
   getTotalNutrients,
   isWorldDying,
-  generateNutrientId,
-  resetNutrientIdCounter,
+  exponentialRandom,
+  getAdjacentSoilCells,
+  absorbNutrient,
+  releaseNutrient,
+  releaseNutrientsOnDeath,
 } from './nutrient'
 
 // Movement
@@ -67,6 +69,7 @@ export {
   resolveConflicts,
   applyMovements,
   decreaseLifeForMoved,
+  processNutrientInteractions,
   createGameState,
   generateMonsterId,
   resetMonsterIdCounter,

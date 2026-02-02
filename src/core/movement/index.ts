@@ -1,4 +1,4 @@
-import type { Cell, Direction, Monster, Nutrient, Position } from '../types'
+import type { Cell, Direction, Monster, Position } from '../types'
 import { HUNGER_THRESHOLD_RATIO } from '../constants'
 import { calculateStraightMove, getForwardPosition, isValidMove } from './straight'
 import { calculateRefractionMove } from './refraction'
@@ -7,8 +7,6 @@ import { calculateStationaryMove } from './stationary'
 export interface MoveResult {
   position: Position
   direction: Direction
-  nutrientInteraction: 'pickup' | 'deposit' | null
-  nutrientId: string | null
   nestPosition: Position | null
 }
 
@@ -102,7 +100,6 @@ export function prioritizePreyDirection(
 export function calculateMove(
   monster: Monster,
   grid: Cell[][],
-  nutrients: Nutrient[],
   monsters: Monster[],
   randomFn: () => number = Math.random
 ): MoveResult {
@@ -111,7 +108,7 @@ export function calculateMove(
   // Calculate base movement based on pattern
   switch (monster.pattern) {
     case 'straight': {
-      const straightResult = calculateStraightMove(monster, grid, nutrients, randomFn)
+      const straightResult = calculateStraightMove(monster, grid, randomFn)
       result = {
         ...straightResult,
         nestPosition: null,
@@ -122,8 +119,6 @@ export function calculateMove(
       const refractionResult = calculateRefractionMove(monster, grid, randomFn)
       result = {
         ...refractionResult,
-        nutrientInteraction: null,
-        nutrientId: null,
         nestPosition: null,
       }
       break
@@ -132,8 +127,6 @@ export function calculateMove(
       const stationaryResult = calculateStationaryMove(monster, grid, randomFn)
       result = {
         ...stationaryResult,
-        nutrientInteraction: null,
-        nutrientId: null,
       }
       break
     }

@@ -19,7 +19,7 @@ function createMonster(overrides: Partial<Monster> = {}): Monster {
     maxLife: 30,
     attack: 3,
     predationTargets: ['nijirigoke'],
-    carryingNutrient: null,
+    carryingNutrient: 0,
     nestPosition: null,
     ...overrides,
   }
@@ -62,7 +62,7 @@ describe('Hunger System', () => {
         maxLife: 10,
         attack: 0,
         predationTargets: [],
-        carryingNutrient: null,
+        carryingNutrient: 0,
         nestPosition: null,
       }
 
@@ -92,7 +92,7 @@ describe('Hunger System', () => {
         maxLife: 10,
         attack: 0,
         predationTargets: [],
-        carryingNutrient: null,
+        carryingNutrient: 0,
         nestPosition: null,
       }
 
@@ -119,7 +119,7 @@ describe('Hunger System', () => {
         maxLife: 80,
         attack: 8,
         predationTargets: ['nijirigoke', 'gajigajimushi'],
-        carryingNutrient: null,
+        carryingNutrient: 0,
         nestPosition: null,
       }
 
@@ -161,7 +161,7 @@ describe('Hunger System', () => {
         maxLife: 10,
         attack: 0,
         predationTargets: [],
-        carryingNutrient: null,
+        carryingNutrient: 0,
         nestPosition: null,
       }
 
@@ -193,11 +193,11 @@ describe('Hunger System', () => {
         maxLife: 10,
         attack: 0,
         predationTargets: [],
-        carryingNutrient: null,
+        carryingNutrient: 0,
         nestPosition: null,
       }
 
-      const result = calculateMove(predator, grid, [], [predator, prey], () => 0)
+      const result = calculateMove(predator, grid, [predator, prey], () => 0)
 
       // Should move toward prey (down)
       expect(result.direction).toBe('down')
@@ -215,7 +215,7 @@ describe('Hunger System', () => {
         predationTargets: [],
       })
 
-      const result = calculateMove(monster, grid, [], [monster], () => 0)
+      const result = calculateMove(monster, grid, [monster], () => 0)
 
       expect(result.position).toEqual({ x: 3, y: 2 })
       expect(result.direction).toBe('right')

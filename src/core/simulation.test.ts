@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import type { Cell, GameState, Monster, Nutrient } from './types'
+import type { Cell, GameState, Monster } from './types'
 import {
   calculateAllMoves,
   resolveConflicts,
@@ -9,7 +9,6 @@ import {
   dig,
   resetMonsterIdCounter,
 } from './simulation'
-import { resetNutrientIdCounter } from './nutrient'
 
 function createGrid(width: number, height: number, type: Cell['type'] = 'empty'): Cell[][] {
   return Array.from({ length: height }, () =>
@@ -28,7 +27,7 @@ function createMonster(overrides: Partial<Monster> = {}): Monster {
     maxLife: 10,
     attack: 0,
     predationTargets: [],
-    carryingNutrient: null,
+    carryingNutrient: 0,
     nestPosition: null,
     ...overrides,
   }
@@ -38,7 +37,6 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
   return {
     grid: createGrid(10, 10),
     monsters: [],
-    nutrients: [],
     totalInitialNutrients: 100,
     ...overrides,
   }
@@ -47,7 +45,6 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
 describe('Simulation', () => {
   beforeEach(() => {
     resetMonsterIdCounter()
-    resetNutrientIdCounter()
   })
 
   describe('calculateAllMoves', () => {
@@ -71,8 +68,6 @@ describe('Simulation', () => {
           result: {
             position: { x: 3, y: 2 },
             direction: 'right' as const,
-            nutrientInteraction: null,
-            nutrientId: null,
             nestPosition: null,
           },
         },
@@ -93,8 +88,6 @@ describe('Simulation', () => {
           result: {
             position: { x: 2, y: 2 },
             direction: 'right' as const,
-            nutrientInteraction: null,
-            nutrientId: null,
             nestPosition: null,
           },
         },
@@ -103,8 +96,6 @@ describe('Simulation', () => {
           result: {
             position: { x: 2, y: 2 },
             direction: 'left' as const,
-            nutrientInteraction: null,
-            nutrientId: null,
             nestPosition: null,
           },
         },
@@ -136,8 +127,6 @@ describe('Simulation', () => {
           result: {
             position: { x: 2, y: 2 },
             direction: 'right' as const,
-            nutrientInteraction: null,
-            nutrientId: null,
             nestPosition: null,
           },
         },
@@ -146,8 +135,6 @@ describe('Simulation', () => {
           result: {
             position: { x: 2, y: 2 },
             direction: 'left' as const,
-            nutrientInteraction: null,
-            nutrientId: null,
             nestPosition: null,
           },
         },
@@ -171,43 +158,14 @@ describe('Simulation', () => {
           result: {
             position: { x: 3, y: 2 },
             direction: 'right' as const,
-            nutrientInteraction: null,
-            nutrientId: null,
             nestPosition: null,
           },
         },
       ]
 
-      const result = applyMovements(moves, [])
+      const result = applyMovements(moves)
 
       expect(result.monsters[0].position).toEqual({ x: 3, y: 2 })
-    })
-
-    it('should handle nutrient pickup', () => {
-      const monster = createMonster({ type: 'nijirigoke', carryingNutrient: null })
-      const nutrients: Nutrient[] = [
-        { id: 'n1', position: { x: 3, y: 2 }, amount: 5, carriedBy: null },
-      ]
-      const moves = [
-        {
-          monster,
-          result: {
-            position: { x: 3, y: 2 },
-            direction: 'right' as const,
-            nutrientInteraction: 'pickup' as const,
-            nutrientId: 'n1',
-            nestPosition: null,
-          },
-        },
-      ]
-
-      const result = applyMovements(moves, nutrients)
-
-      expect(result.monsters[0].carryingNutrient).toBe('n1')
-      expect(result.nutrients[0].carriedBy).toBe('monster-1')
-      expect(result.events).toContainEqual(
-        expect.objectContaining({ type: 'NUTRIENT_PICKED' })
-      )
     })
   })
 
@@ -215,8 +173,9 @@ describe('Simulation', () => {
     it('should decrease life for monsters that moved', () => {
       const monster = createMonster({ id: 'm1', position: { x: 3, y: 2 }, life: 10 })
       const original = new Map([['m1', { x: 2, y: 2 }]])
+      const grid = createGrid(10, 10)
 
-      const result = decreaseLifeForMoved([monster], original)
+      const result = decreaseLifeForMoved([monster], original, grid)
 
       expect(result.monsters[0].life).toBe(9)
     })
@@ -224,8 +183,9 @@ describe('Simulation', () => {
     it('should not decrease life for stationary monsters', () => {
       const monster = createMonster({ id: 'm1', position: { x: 2, y: 2 }, life: 10 })
       const original = new Map([['m1', { x: 2, y: 2 }]])
+      const grid = createGrid(10, 10)
 
-      const result = decreaseLifeForMoved([monster], original)
+      const result = decreaseLifeForMoved([monster], original, grid)
 
       expect(result.monsters[0].life).toBe(10)
     })
@@ -233,13 +193,38 @@ describe('Simulation', () => {
     it('should remove monsters with 0 life', () => {
       const monster = createMonster({ id: 'm1', position: { x: 3, y: 2 }, life: 1 })
       const original = new Map([['m1', { x: 2, y: 2 }]])
+      const grid = createGrid(10, 10)
 
-      const result = decreaseLifeForMoved([monster], original)
+      const result = decreaseLifeForMoved([monster], original, grid)
 
       expect(result.monsters).toHaveLength(0)
       expect(result.events).toContainEqual(
         expect.objectContaining({ type: 'MONSTER_DIED', cause: 'starvation' })
       )
+    })
+
+    it('should release nutrients to adjacent soil on death', () => {
+      const grid = createGrid(10, 10, 'soil')
+      grid[2][3].type = 'empty' // monster position
+
+      const monster = createMonster({
+        id: 'm1',
+        position: { x: 3, y: 2 },
+        life: 1,
+        carryingNutrient: 8,
+      })
+      const original = new Map([['m1', { x: 2, y: 2 }]])
+
+      const result = decreaseLifeForMoved([monster], original, grid)
+
+      expect(result.monsters).toHaveLength(0)
+      // Nutrients distributed to adjacent soil cells
+      let releasedTotal = 0
+      releasedTotal += result.grid[1][3].nutrientAmount // up
+      releasedTotal += result.grid[3][3].nutrientAmount // down
+      releasedTotal += result.grid[2][2].nutrientAmount // left
+      releasedTotal += result.grid[2][4].nutrientAmount // right
+      expect(releasedTotal).toBe(8)
     })
   })
 
@@ -264,7 +249,7 @@ describe('Simulation', () => {
         type: 'gajigajimushi',
         position: { x: 2, y: 2 },
         direction: 'right',
-        pattern: 'straight', // use straight for predictable movement
+        pattern: 'straight',
         life: 20,
         maxLife: 30,
         attack: 3,
@@ -287,6 +272,27 @@ describe('Simulation', () => {
       expect(result.state.monsters).toHaveLength(1)
       expect(result.state.monsters[0].type).toBe('gajigajimushi')
       expect(result.events.some((e) => e.type === 'PREDATION')).toBe(true)
+    })
+
+    it('should process nutrient absorption for nijirigoke', () => {
+      const grid = createGrid(10, 10, 'soil')
+      grid[2][2].type = 'empty' // monster starts here
+      grid[2][3].type = 'empty' // monster moves here
+      grid[2][4].nutrientAmount = 5 // soil with nutrients to the right
+
+      const monster = createMonster({
+        position: { x: 2, y: 2 },
+        direction: 'right',
+        carryingNutrient: 0,
+      })
+      const state = createGameState({ grid, monsters: [monster] })
+
+      const result = tick(state)
+
+      // Monster moved to (3,2) and absorbed nutrients from (4,2)
+      expect(result.state.monsters[0].position).toEqual({ x: 3, y: 2 })
+      expect(result.state.monsters[0].carryingNutrient).toBe(5)
+      expect(result.state.grid[2][4].nutrientAmount).toBe(0)
     })
   })
 
@@ -317,7 +323,7 @@ describe('Simulation', () => {
       expect('error' in result).toBe(true)
     })
 
-    it('should create nutrient with depleted amount', () => {
+    it('should spawn monster with life based on depleted nutrients', () => {
       const grid = createGrid(10, 10, 'soil')
       grid[5][5].nutrientAmount = 100 // 100 -> 70 available
       const state = createGameState({ grid })
@@ -326,8 +332,9 @@ describe('Simulation', () => {
 
       expect('error' in result).toBe(false)
       if (!('error' in result)) {
-        expect(result.state.nutrients).toHaveLength(1)
-        expect(result.state.nutrients[0].amount).toBe(70)
+        // Nijirigoke maxLife is 10, so it should be capped at 10
+        expect(result.state.monsters[0].life).toBeLessThanOrEqual(10)
+        expect(result.state.monsters[0].carryingNutrient).toBe(0)
       }
     })
 

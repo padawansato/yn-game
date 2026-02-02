@@ -1,11 +1,17 @@
 import { describe, it, expect } from 'vitest'
-import type { Monster, Nutrient } from './types'
+import type { Cell, Monster } from './types'
 import {
   canPredate,
   checkSameCellPredation,
   applyPredation,
   processPredation,
 } from './predation'
+
+function createGrid(width: number, height: number, type: Cell['type'] = 'empty'): Cell[][] {
+  return Array.from({ length: height }, () =>
+    Array.from({ length: width }, () => ({ type, nutrientAmount: 0 }))
+  )
+}
 
 function createMonster(overrides: Partial<Monster> = {}): Monster {
   return {
@@ -18,7 +24,7 @@ function createMonster(overrides: Partial<Monster> = {}): Monster {
     maxLife: 10,
     attack: 0,
     predationTargets: [],
-    carryingNutrient: null,
+    carryingNutrient: 0,
     nestPosition: null,
     ...overrides,
   }
@@ -123,7 +129,7 @@ describe('Predation System', () => {
         life: 8,
       })
 
-      const result = applyPredation(predator, prey, [])
+      const result = applyPredation(predator, prey)
 
       expect(result.predator.life).toBe(28)
     })
@@ -142,33 +148,9 @@ describe('Predation System', () => {
         life: 10,
       })
 
-      const result = applyPredation(predator, prey, [])
+      const result = applyPredation(predator, prey)
 
       expect(result.predator.life).toBe(30) // capped at maxLife
-    })
-
-    it('should drop nutrient when prey was carrying one', () => {
-      const predator = createMonster({
-        id: 'predator',
-        type: 'gajigajimushi',
-        position: { x: 5, y: 5 },
-        predationTargets: ['nijirigoke'],
-      })
-      const prey = createMonster({
-        id: 'prey',
-        type: 'nijirigoke',
-        position: { x: 5, y: 5 },
-        carryingNutrient: 'n1',
-      })
-      const nutrients: Nutrient[] = [
-        { id: 'n1', position: { x: 0, y: 0 }, amount: 5, carriedBy: 'prey' },
-      ]
-
-      const result = applyPredation(predator, prey, nutrients)
-
-      expect(result.droppedNutrient).not.toBeNull()
-      expect(result.droppedNutrient!.position).toEqual({ x: 5, y: 5 })
-      expect(result.droppedNutrient!.carriedBy).toBeNull()
     })
 
     it('should emit PREDATION and MONSTER_DIED events', () => {
@@ -178,7 +160,7 @@ describe('Predation System', () => {
       })
       const prey = createMonster({ type: 'nijirigoke' })
 
-      const result = applyPredation(predator, prey, [])
+      const result = applyPredation(predator, prey)
 
       expect(result.events).toHaveLength(2)
       expect(result.events[0].type).toBe('PREDATION')
@@ -202,8 +184,9 @@ describe('Predation System', () => {
         position: { x: 5, y: 5 },
         life: 5,
       })
+      const grid = createGrid(10, 10)
 
-      const result = processPredation([predator, prey], [])
+      const result = processPredation([predator, prey], grid)
 
       expect(result.monsters).toHaveLength(1)
       expect(result.monsters[0].id).toBe('predator')
@@ -233,14 +216,18 @@ describe('Predation System', () => {
         type: 'gajigajimushi',
         position: { x: 3, y: 3 },
       })
+      const grid = createGrid(10, 10)
 
-      const result = processPredation([predator1, prey1, predator2, prey2], [])
+      const result = processPredation([predator1, prey1, predator2, prey2], grid)
 
       expect(result.monsters).toHaveLength(2)
       expect(result.events).toHaveLength(4) // 2 predations * 2 events each
     })
 
-    it('should update nutrients when prey drops nutrient', () => {
+    it('should release prey nutrients to adjacent soil on death', () => {
+      const grid = createGrid(10, 10, 'soil')
+      grid[5][5].type = 'empty' // predation position
+
       const predator = createMonster({
         id: 'predator',
         type: 'gajigajimushi',
@@ -251,16 +238,18 @@ describe('Predation System', () => {
         id: 'prey',
         type: 'nijirigoke',
         position: { x: 5, y: 5 },
-        carryingNutrient: 'n1',
+        carryingNutrient: 8, // prey is carrying nutrients
       })
-      const nutrients: Nutrient[] = [
-        { id: 'n1', position: { x: 0, y: 0 }, amount: 5, carriedBy: 'prey' },
-      ]
 
-      const result = processPredation([predator, prey], nutrients)
+      const result = processPredation([predator, prey], grid)
 
-      expect(result.nutrients[0].position).toEqual({ x: 5, y: 5 })
-      expect(result.nutrients[0].carriedBy).toBeNull()
+      // Nutrients should be distributed to adjacent soil
+      let total = 0
+      total += result.grid[4][5].nutrientAmount // up
+      total += result.grid[6][5].nutrientAmount // down
+      total += result.grid[5][4].nutrientAmount // left
+      total += result.grid[5][6].nutrientAmount // right
+      expect(total).toBe(8)
     })
 
     it('should not affect monsters at different positions', () => {
@@ -275,8 +264,9 @@ describe('Predation System', () => {
         type: 'nijirigoke',
         position: { x: 5, y: 5 }, // different position
       })
+      const grid = createGrid(10, 10)
 
-      const result = processPredation([monster1, monster2], [])
+      const result = processPredation([monster1, monster2], grid)
 
       expect(result.monsters).toHaveLength(2)
       expect(result.events).toHaveLength(0)

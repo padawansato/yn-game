@@ -8,6 +8,7 @@ import {
   type GameState,
   type Cell,
   type Monster,
+  type MonsterType,
 } from './core'
 
 // Initialize game
@@ -35,7 +36,6 @@ function createInitialState(): GameState {
   return {
     grid: initializedGrid,
     monsters: [],
-    nutrients: [],
     totalInitialNutrients: 200,
   }
 }
@@ -93,31 +93,31 @@ function formatEvent(e: { type: string; [key: string]: unknown }): string {
       return `${(e.monster as Monster).type} died (${e.cause})`
     case 'PREDATION':
       return `${(e.predator as Monster).type} ate ${(e.prey as Monster).type}`
+    case 'NUTRIENT_ABSORBED':
+      return `${(e.monster as Monster).type} absorbed ${e.amount}`
+    case 'NUTRIENT_RELEASED':
+      return `${(e.monster as Monster).type} released ${e.amount}`
     default:
       return e.type
   }
 }
 
 // Display helpers
-function getCellDisplay(cell: Cell, x: number, y: number): string {
-  const monster = gameState.value.monsters.find(
-    (m) => m.position.x === x && m.position.y === y
-  )
-  if (monster) {
-    switch (monster.type) {
-      case 'nijirigoke':
-        return '苔'
-      case 'gajigajimushi':
-        return '虫'
-      case 'lizardman':
-        return '蜥'
-    }
-  }
+type EntityType = MonsterType
 
-  const nutrient = gameState.value.nutrients.find(
-    (n) => n.position.x === x && n.position.y === y && n.carriedBy === null
-  )
-  if (nutrient) return '養'
+const ENTITY_ICONS: Record<EntityType, string> = {
+  lizardman: '蜥',
+  gajigajimushi: '虫',
+  nijirigoke: '苔',
+}
+
+function getCellDisplay(cell: Cell, x: number, y: number): string {
+  const monsters = getMonstersAtCell(x, y)
+  const topMonster = getTopMonster(monsters)
+
+  if (topMonster) {
+    return ENTITY_ICONS[topMonster.type]
+  }
 
   switch (cell.type) {
     case 'wall':
@@ -130,33 +130,56 @@ function getCellDisplay(cell: Cell, x: number, y: number): string {
 }
 
 function getCellClass(cell: Cell, x: number, y: number): string {
-  const monster = gameState.value.monsters.find(
-    (m) => m.position.x === x && m.position.y === y
-  )
-  if (monster) return `cell monster-${monster.type}`
+  const monsters = getMonstersAtCell(x, y)
+  const topMonster = getTopMonster(monsters)
 
-  const nutrient = gameState.value.nutrients.find(
-    (n) => n.position.x === x && n.position.y === y && n.carriedBy === null
-  )
-  if (nutrient) return 'cell nutrient'
+  if (topMonster) {
+    return `cell monster-${topMonster.type}`
+  }
 
   return `cell cell-${cell.type}`
+}
+
+function getOverlapCount(x: number, y: number): number {
+  return getMonstersAtCell(x, y).length
 }
 
 const totalNutrients = computed(() => getTotalNutrients(gameState.value))
 
 const monsterSummary = computed(() => {
   const monsters = gameState.value.monsters
-  const summary: Record<string, { count: number; totalLife: number }> = {}
+  const summary: Record<string, { count: number; totalLife: number; totalCarrying: number }> = {}
   for (const m of monsters) {
     if (!summary[m.type]) {
-      summary[m.type] = { count: 0, totalLife: 0 }
+      summary[m.type] = { count: 0, totalLife: 0, totalCarrying: 0 }
     }
     summary[m.type].count++
     summary[m.type].totalLife += m.life
+    summary[m.type].totalCarrying += m.carryingNutrient
   }
   return summary
 })
+
+// Monster helpers
+function getMonstersAtCell(x: number, y: number): Monster[] {
+  return gameState.value.monsters.filter(
+    (m) => m.position.x === x && m.position.y === y
+  )
+}
+
+// Display priority: lower number = higher priority
+const DISPLAY_PRIORITY: Record<EntityType, number> = {
+  lizardman: 0,
+  gajigajimushi: 1,
+  nijirigoke: 2,
+}
+
+function getTopMonster(monsters: Monster[]): Monster | null {
+  if (monsters.length === 0) return null
+  return monsters.reduce((top, curr) =>
+    DISPLAY_PRIORITY[curr.type] < DISPLAY_PRIORITY[top.type] ? curr : top
+  )
+}
 </script>
 
 <template>
@@ -184,7 +207,7 @@ const monsterSummary = computed(() => {
         v-for="(info, type) in monsterSummary"
         :key="type"
       >
-        {{ type }}: {{ info.count }}匹 (計{{ info.totalLife }}life)
+        {{ type }}: {{ info.count }}匹 (計{{ info.totalLife }}life, 養分{{ info.totalCarrying }})
       </div>
     </div>
 
@@ -198,9 +221,19 @@ const monsterSummary = computed(() => {
           v-for="(cell, x) in row"
           :key="x"
           :class="getCellClass(cell, x, y)"
+          :title="`(${x},${y}) 養分:${cell.nutrientAmount}`"
           @click="handleCellClick(x, y)"
         >
-          {{ getCellDisplay(cell, x, y) }}
+          <span class="cell-content">{{ getCellDisplay(cell, x, y) }}</span>
+          <span
+            v-if="getOverlapCount(x, y) > 1"
+            class="overlap-badge"
+          >{{ getOverlapCount(x, y) }}</span>
+          <span
+            v-if="cell.type === 'soil' && cell.nutrientAmount > 0"
+            class="nutrient-indicator"
+            :style="{ opacity: Math.min(1, cell.nutrientAmount / 50) }"
+          />
         </div>
       </div>
     </div>
@@ -212,7 +245,6 @@ const monsterSummary = computed(() => {
       <span class="legend-item"><span class="cell monster-nijirigoke">苔</span> ニジリゴケ</span>
       <span class="legend-item"><span class="cell monster-gajigajimushi">虫</span> ガジガジムシ</span>
       <span class="legend-item"><span class="cell monster-lizardman">蜥</span> リザードマン</span>
-      <span class="legend-item"><span class="cell nutrient">養</span> 養分</span>
     </div>
 
     <div class="events">
@@ -305,6 +337,42 @@ h1 {
   border: 1px solid #333;
   cursor: pointer;
   user-select: none;
+  position: relative;
+}
+
+.cell-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.overlap-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 0.9rem;
+  height: 0.9rem;
+  background: #ff5722;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: bold;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(25%, -25%);
+}
+
+.nutrient-indicator {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 6px;
+  height: 6px;
+  background: #ffd54f;
+  border-radius: 50%;
 }
 
 .cell-wall {
@@ -340,11 +408,6 @@ h1 {
 .monster-lizardman {
   background: #4d1a1a;
   color: #ef5350;
-}
-
-.nutrient {
-  background: #4d4d1a;
-  color: #ffd54f;
 }
 
 .legend {
