@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+tmp/
+.git/
+.gitignore
+*.md
+.claude/
+openspec/

@@ -1,0 +1,29 @@
+services:
+  app:
+    build: .
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    command: pnpm dev --host
+
+  test:
+    build: .
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: pnpm test
+    profiles:
+      - test
+
+  test-watch:
+    build: .
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: pnpm test:watch
+    profiles:
+      - test
