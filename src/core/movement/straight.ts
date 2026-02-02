@@ -72,6 +72,7 @@ export function handleWallCollision(
 /**
  * Calculate next move for straight pattern (Nijirigoke)
  * Returns new position and direction
+ * When hitting a wall, turns and immediately moves in the new direction
  */
 export function calculateStraightMove(
   monster: Monster,
@@ -85,10 +86,21 @@ export function calculateStraightMove(
 
   // Check if forward is blocked
   if (!isValidMove(forwardPos, grid)) {
-    // Wall collision - turn
+    // Wall collision - turn and move immediately
     const newDirection = handleWallCollision(monster, grid, randomFn)
+    const newForwardPos = getForwardPosition(monster.position, newDirection)
+
+    // If the new direction is valid, move there
+    if (isValidMove(newForwardPos, grid)) {
+      return {
+        position: newForwardPos,
+        direction: newDirection,
+      }
+    }
+
+    // Completely stuck - stay in place
     return {
-      position: monster.position, // Stay in place this tick
+      position: monster.position,
       direction: newDirection,
     }
   }

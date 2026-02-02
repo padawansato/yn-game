@@ -262,7 +262,7 @@ export function tick(
 }
 
 /**
- * Dig action - dig soil and spawn Nijirigoke
+ * Dig action - dig soil and spawn Nijirigoke (only if soil has nutrients)
  */
 export function dig(
   state: GameState,
@@ -287,9 +287,6 @@ export function dig(
 
   const events: GameEvent[] = []
 
-  // Calculate available nutrients (70% of soil nutrients, 30% lost)
-  const availableNutrients = depleteOnDig(cell.nutrientAmount)
-
   // Update grid - soil becomes empty
   const newGrid = state.grid.map((row, y) =>
     row.map((c, x) => {
@@ -299,6 +296,20 @@ export function dig(
       return c
     })
   )
+
+  // If soil has no nutrients, just create empty cell without spawning Nijirigoke
+  if (cell.nutrientAmount === 0) {
+    return {
+      state: {
+        ...state,
+        grid: newGrid,
+      },
+      events,
+    }
+  }
+
+  // Calculate available nutrients (70% of soil nutrients, 30% lost)
+  const availableNutrients = depleteOnDig(cell.nutrientAmount)
 
   // Spawn Nijirigoke with life based on nutrients
   const config = MONSTER_CONFIGS.nijirigoke

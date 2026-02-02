@@ -132,26 +132,38 @@ describe('Straight Movement', () => {
       expect(result.direction).toBe('right')
     })
 
-    it('should turn when hitting wall', () => {
+    it('should turn and move immediately when hitting wall', () => {
       const grid = createGrid(5, 5, 'empty')
       grid[2][3].type = 'wall' // wall in front
 
       const monster = createMonster({ position: { x: 2, y: 2 }, direction: 'right' })
+      // randomFn returns 0 -> first available direction is 'up'
       const result = calculateStraightMove(monster, grid, () => 0)
 
-      expect(result.position).toEqual({ x: 2, y: 2 }) // stays in place
-      expect(result.direction).not.toBe('right') // turned
+      expect(result.direction).toBe('up') // turned to first available direction
+      expect(result.position).toEqual({ x: 2, y: 1 }) // moved in new direction
     })
 
-    it('should turn when hitting soil', () => {
+    it('should turn and move immediately when hitting soil', () => {
       const grid = createGrid(5, 5, 'empty')
       grid[2][3].type = 'soil' // soil in front
 
       const monster = createMonster({ position: { x: 2, y: 2 }, direction: 'right' })
+      // randomFn returns 0 -> first available direction is 'up'
       const result = calculateStraightMove(monster, grid, () => 0)
 
-      expect(result.position).toEqual({ x: 2, y: 2 }) // stays in place
-      expect(result.direction).not.toBe('right') // turned
+      expect(result.direction).toBe('up') // turned to first available direction
+      expect(result.position).toEqual({ x: 2, y: 1 }) // moved in new direction
+    })
+
+    it('should stay in place only when completely stuck', () => {
+      const grid = createGrid(5, 5, 'wall')
+      grid[2][2].type = 'empty' // only monster's current position is empty
+
+      const monster = createMonster({ position: { x: 2, y: 2 }, direction: 'right' })
+      const result = calculateStraightMove(monster, grid, () => 0)
+
+      expect(result.position).toEqual({ x: 2, y: 2 }) // stuck, stays in place
     })
   })
 })

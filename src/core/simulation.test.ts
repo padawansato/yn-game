@@ -297,7 +297,7 @@ describe('Simulation', () => {
   })
 
   describe('dig', () => {
-    it('should spawn Nijirigoke when digging soil', () => {
+    it('should spawn Nijirigoke when digging soil with nutrients', () => {
       const grid = createGrid(10, 10, 'soil')
       grid[5][5].nutrientAmount = 10
       const state = createGameState({ grid })
@@ -311,6 +311,21 @@ describe('Simulation', () => {
         expect(result.state.monsters[0].position).toEqual({ x: 5, y: 5 })
         expect(result.state.grid[5][5].type).toBe('empty')
         expect(result.events[0].type).toBe('MONSTER_SPAWNED')
+      }
+    })
+
+    it('should not spawn Nijirigoke when digging soil with zero nutrients', () => {
+      const grid = createGrid(10, 10, 'soil')
+      grid[5][5].nutrientAmount = 0
+      const state = createGameState({ grid })
+
+      const result = dig(state, { x: 5, y: 5 })
+
+      expect('error' in result).toBe(false)
+      if (!('error' in result)) {
+        expect(result.state.monsters).toHaveLength(0)
+        expect(result.state.grid[5][5].type).toBe('empty')
+        expect(result.events).toHaveLength(0)
       }
     })
 
