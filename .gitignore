@@ -1,34 +1,75 @@
 # Dependencies
 node_modules/
 
-# Build
+# Build output
 dist/
+dist-ssr/
+*.local
+
+# Vite cache
+.vite/
+
+# TypeScript cache
+*.tsbuildinfo
 
 # IDE
 .idea/
 *.swp
 *.swo
 .vscode/
+*.sublime-workspace
+*.sublime-project
 
 # Logs
 *.log
 npm-debug.log*
 pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # OS
 .DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
 # Test
 coverage/
+.nyc_output/
 
 # Temp
 tmp/
 *.tmp
+.temp/
 
 # Environment
 .env
 .env.local
 .env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Editor directories and files
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Vitest
+vitest.timestamp-*
+
+# Debug
+.debug/
+
+# Local Netlify folder
+.netlify
 
 # Claude Code
 .claude/
+
+# pnpm
+.pnpm-store/
+
+# npm lock file (using pnpm)
+package-lock.json

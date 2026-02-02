@@ -1,5 +1,30 @@
 # yn-game
 
+## 開発環境
+
+**Docker内で統一**（ローカルにnode_modulesを置かない）
+
+```bash
+# 開発サーバー起動（http://localhost:5173）
+docker compose up
+
+# テスト実行
+docker compose run --rm app pnpm test
+
+# 特定テストのみ
+docker compose run --rm app pnpm test -- --run <path>
+
+# lint / format
+docker compose run --rm app pnpm lint
+docker compose run --rm app pnpm format
+```
+
+### 依存関係更新時
+```bash
+# package.json編集後
+docker compose build --no-cache
+```
+
 ## Git（GitHub Flow）
 
 ### ブランチ構成
