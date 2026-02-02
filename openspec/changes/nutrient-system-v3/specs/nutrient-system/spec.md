@@ -26,10 +26,10 @@ The system SHALL manage nutrients as internal parameters of soil blocks. Nutrien
 - **THEN** the total nutrient amount (sum of all soil nutrientAmount + all monster carryingNutrient) SHALL remain constant or decrease, never increase
 
 ### Requirement: Digging depletes nutrients
-The system SHALL spawn a Nijirigoke when digging soil. The spawned monster's strength depends on the soil's nutrient amount.
+The system SHALL spawn a Nijirigoke when digging soil with nutrients. The spawned monster's strength depends on the soil's nutrient amount.
 
-#### Scenario: Dig soil block
-- **WHEN** the player digs a soil block with N nutrients
+#### Scenario: Dig soil block with nutrients
+- **WHEN** the player digs a soil block with N > 0 nutrients
 - **THEN** the soil SHALL become empty, a Nijirigoke SHALL spawn, and 30% of N SHALL be lost
 
 #### Scenario: Monster strength from nutrients
@@ -38,7 +38,7 @@ The system SHALL spawn a Nijirigoke when digging soil. The spawned monster's str
 
 #### Scenario: Dig nutrient-poor soil
 - **WHEN** the player digs a soil block with 0 nutrients
-- **THEN** a Nijirigoke SHALL spawn with minimum life (1)
+- **THEN** the soil SHALL become empty but NO Nijirigoke SHALL spawn
 
 ## ADDED Requirements
 

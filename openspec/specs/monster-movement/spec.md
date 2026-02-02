@@ -8,12 +8,12 @@ Nijirigoke SHALL move in a straight line until hitting a wall.
 - **THEN** it SHALL continue moving in its current direction
 
 #### Scenario: Wall collision
-- **WHEN** a Nijirigoke hits a wall
-- **THEN** it SHALL randomly choose to turn right, left, or back
+- **WHEN** a Nijirigoke hits a wall or obstacle
+- **THEN** it SHALL randomly choose to turn right, left, or back AND immediately move in that direction (never stops)
 
-#### Scenario: Nutrient interaction during movement
-- **WHEN** a Nijirigoke encounters a nutrient during movement
-- **THEN** it SHALL pick up (if not carrying) or deposit (if carrying) the nutrient
+#### Scenario: Completely stuck
+- **WHEN** a Nijirigoke is surrounded by walls on all sides
+- **THEN** it SHALL stay in place (only case where it doesn't move)
 
 ### Requirement: Refraction movement pattern (Gajigajimushi)
 Gajigajimushi SHALL always turn when possible.
