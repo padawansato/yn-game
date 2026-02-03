@@ -262,7 +262,33 @@ export function tick(
 }
 
 /**
+ * Check if a position is adjacent to an empty cell
+ */
+export function isAdjacentToEmpty(position: Position, grid: Cell[][]): boolean {
+  const directions = [
+    { x: 0, y: -1 }, // up
+    { x: 0, y: 1 },  // down
+    { x: -1, y: 0 }, // left
+    { x: 1, y: 0 },  // right
+  ]
+
+  for (const dir of directions) {
+    const nx = position.x + dir.x
+    const ny = position.y + dir.y
+
+    if (ny >= 0 && ny < grid.length && nx >= 0 && nx < grid[0].length) {
+      if (grid[ny][nx].type === 'empty') {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
+/**
  * Dig action - dig soil and spawn Nijirigoke (only if soil has nutrients)
+ * Can only dig blocks adjacent to empty cells
  */
 export function dig(
   state: GameState,
@@ -283,6 +309,11 @@ export function dig(
   // Must be soil
   if (cell.type !== 'soil') {
     return { error: 'Can only dig soil blocks' }
+  }
+
+  // Must be adjacent to empty cell
+  if (!isAdjacentToEmpty(position, state.grid)) {
+    return { error: 'Can only dig blocks adjacent to empty space' }
   }
 
   const events: GameEvent[] = []
@@ -343,6 +374,7 @@ export function dig(
 
 /**
  * Create initial game state
+ * Includes an initial empty cell at the top center for digging entry point
  */
 export function createGameState(
   width: number,
@@ -351,12 +383,19 @@ export function createGameState(
 ): GameState {
   const grid: Cell[][] = []
 
+  // Calculate entry point position (top center, one row below the wall)
+  const entryX = Math.floor(width / 2)
+  const entryY = 1
+
   for (let y = 0; y < height; y++) {
     const row: Cell[] = []
     for (let x = 0; x < width; x++) {
       // Borders are walls
       if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
         row.push({ type: 'wall', nutrientAmount: 0 })
+      } else if (x === entryX && y === entryY) {
+        // Entry point - initial empty cell for digging
+        row.push({ type: 'empty', nutrientAmount: 0 })
       } else if (Math.random() < soilRatio) {
         row.push({ type: 'soil', nutrientAmount: 0 })
       } else {

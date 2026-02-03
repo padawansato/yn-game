@@ -65,6 +65,7 @@ export type { PredationResult } from './predation'
 export {
   tick,
   dig,
+  isAdjacentToEmpty,
   calculateAllMoves,
   resolveConflicts,
   applyMovements,

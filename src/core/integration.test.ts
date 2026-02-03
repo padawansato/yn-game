@@ -78,6 +78,9 @@ describe('Integration Tests', () => {
       // Create grid with soil
       const grid = createGrid(10, 10, 'soil')
 
+      // Add entry point for digging (empty cell at start)
+      grid[2][1].type = 'empty'
+
       // Initialize with lots of nutrients
       const { grid: initializedGrid } = initializeNutrients(grid, 1000)
 
@@ -90,6 +93,7 @@ describe('Integration Tests', () => {
       expect(initialNutrients).toBe(1000)
 
       // Dig multiple times (each dig loses 30% of cell nutrients)
+      // Now we can dig sequentially from the entry point
       for (let i = 0; i < 5; i++) {
         const result = dig(state, { x: 2 + i, y: 2 })
         if (!('error' in result)) {

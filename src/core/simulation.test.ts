@@ -7,6 +7,7 @@ import {
   decreaseLifeForMoved,
   tick,
   dig,
+  isAdjacentToEmpty,
   resetMonsterIdCounter,
 } from './simulation'
 
@@ -296,10 +297,42 @@ describe('Simulation', () => {
     })
   })
 
+  describe('isAdjacentToEmpty', () => {
+    it('should return true if adjacent to empty cell', () => {
+      const grid = createGrid(10, 10, 'soil')
+      grid[5][4].type = 'empty' // empty to the left of (5,5)
+
+      expect(isAdjacentToEmpty({ x: 5, y: 5 }, grid)).toBe(true)
+    })
+
+    it('should return false if not adjacent to empty cell', () => {
+      const grid = createGrid(10, 10, 'soil')
+
+      expect(isAdjacentToEmpty({ x: 5, y: 5 }, grid)).toBe(false)
+    })
+
+    it('should check all four directions', () => {
+      const grid = createGrid(10, 10, 'soil')
+
+      // Test each direction
+      grid[4][5].type = 'empty' // up
+      expect(isAdjacentToEmpty({ x: 5, y: 5 }, grid)).toBe(true)
+
+      grid[4][5].type = 'soil'
+      grid[6][5].type = 'empty' // down
+      expect(isAdjacentToEmpty({ x: 5, y: 5 }, grid)).toBe(true)
+
+      grid[6][5].type = 'soil'
+      grid[5][6].type = 'empty' // right
+      expect(isAdjacentToEmpty({ x: 5, y: 5 }, grid)).toBe(true)
+    })
+  })
+
   describe('dig', () => {
-    it('should spawn Nijirigoke when digging soil with nutrients', () => {
+    it('should spawn Nijirigoke when digging soil with nutrients adjacent to empty', () => {
       const grid = createGrid(10, 10, 'soil')
       grid[5][5].nutrientAmount = 10
+      grid[5][4].type = 'empty' // adjacent empty cell
       const state = createGameState({ grid })
 
       const result = dig(state, { x: 5, y: 5 })
@@ -317,6 +350,7 @@ describe('Simulation', () => {
     it('should not spawn Nijirigoke when digging soil with zero nutrients', () => {
       const grid = createGrid(10, 10, 'soil')
       grid[5][5].nutrientAmount = 0
+      grid[5][4].type = 'empty' // adjacent empty cell
       const state = createGameState({ grid })
 
       const result = dig(state, { x: 5, y: 5 })
@@ -338,9 +372,24 @@ describe('Simulation', () => {
       expect('error' in result).toBe(true)
     })
 
+    it('should return error when not adjacent to empty', () => {
+      const grid = createGrid(10, 10, 'soil')
+      grid[5][5].nutrientAmount = 10
+      // No adjacent empty cell
+      const state = createGameState({ grid })
+
+      const result = dig(state, { x: 5, y: 5 })
+
+      expect('error' in result).toBe(true)
+      if ('error' in result) {
+        expect(result.error).toBe('Can only dig blocks adjacent to empty space')
+      }
+    })
+
     it('should spawn monster with life based on depleted nutrients', () => {
       const grid = createGrid(10, 10, 'soil')
       grid[5][5].nutrientAmount = 100 // 100 -> 70 available
+      grid[5][4].type = 'empty' // adjacent empty cell
       const state = createGameState({ grid })
 
       const result = dig(state, { x: 5, y: 5 })
