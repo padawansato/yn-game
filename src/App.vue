@@ -40,6 +40,10 @@ function createInitialState(): GameState {
   // Initialize nutrients
   const { grid: initializedGrid } = initializeNutrients(grid, 200)
 
+  // テスト用: エントリーポイント近くに高養分土を配置
+  initializedGrid[2][6].nutrientAmount = 20 // リザードマン用 (17以上)
+  initializedGrid[3][4].nutrientAmount = 12 // ガジガジムシ用 (10-16)
+
   return {
     grid: initializedGrid,
     monsters: [],

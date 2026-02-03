@@ -55,3 +55,9 @@ export const MOVEMENT_LIFE_COST = 1
 // Grid dimensions (default)
 export const DEFAULT_GRID_WIDTH = 20
 export const DEFAULT_GRID_HEIGHT = 15
+
+// Threshold of spawn monster
+export const NUTRIENT_SPAWN_THRESHOLDS = {
+  GAJIGAJIMUSHI: 10,
+  LIZARDMAN: 17,
+} as const

@@ -370,7 +370,7 @@ describe('Simulation', () => {
   describe('dig', () => {
     it('should spawn Nijirigoke when digging soil with nutrients adjacent to empty', () => {
       const grid = createGrid(10, 10, 'soil')
-      grid[5][5].nutrientAmount = 10
+      grid[5][5].nutrientAmount = 5  // 1-9 spawns nijirigoke
       grid[5][4].type = 'empty' // adjacent empty cell
       const state = createGameState({ grid })
 
@@ -427,7 +427,7 @@ describe('Simulation', () => {
 
     it('should spawn monster with life based on depleted nutrients', () => {
       const grid = createGrid(10, 10, 'soil')
-      grid[5][5].nutrientAmount = 100 // 100 -> 70 available
+      grid[5][5].nutrientAmount = 9  // 9 * 0.7 = 6.3 -> life = 6
       grid[5][4].type = 'empty' // adjacent empty cell
       const state = createGameState({ grid })
 
@@ -435,7 +435,7 @@ describe('Simulation', () => {
 
       expect('error' in result).toBe(false)
       if (!('error' in result)) {
-        // Nijirigoke maxLife is 10, so it should be capped at 10
+        // Nijirigoke maxLife is 10, life = min(availableNutrients, maxLife)
         expect(result.state.monsters[0].life).toBeLessThanOrEqual(10)
         expect(result.state.monsters[0].carryingNutrient).toBe(0)
       }
@@ -448,6 +448,67 @@ describe('Simulation', () => {
       const result = dig(state, { x: 15, y: 15 })
 
       expect('error' in result).toBe(true)
+    })
+
+    // 境界値テスト: 養分によるモンスター生成
+    it('should spawn nijirigoke when nutrient is 9 (upper boundary)', () => {
+      const grid = createGrid(10, 10, 'soil')
+      grid[5][5].nutrientAmount = 9
+      grid[5][4].type = 'empty'
+      const state = createGameState({ grid })
+
+      const result = dig(state, { x: 5, y: 5 })
+
+      expect('error' in result).toBe(false)
+      if (!('error' in result)) {
+        expect(result.state.monsters).toHaveLength(1)
+        expect(result.state.monsters[0].type).toBe('nijirigoke')
+      }
+    })
+
+    it('should spawn gajigajimushi when nutrient is 10 (lower boundary)', () => {
+      const grid = createGrid(10, 10, 'soil')
+      grid[5][5].nutrientAmount = 10
+      grid[5][4].type = 'empty'
+      const state = createGameState({ grid })
+
+      const result = dig(state, { x: 5, y: 5 })
+
+      expect('error' in result).toBe(false)
+      if (!('error' in result)) {
+        expect(result.state.monsters).toHaveLength(1)
+        expect(result.state.monsters[0].type).toBe('gajigajimushi')
+      }
+    })
+
+    it('should spawn gajigajimushi when nutrient is 16 (upper boundary)', () => {
+      const grid = createGrid(10, 10, 'soil')
+      grid[5][5].nutrientAmount = 16
+      grid[5][4].type = 'empty'
+      const state = createGameState({ grid })
+
+      const result = dig(state, { x: 5, y: 5 })
+
+      expect('error' in result).toBe(false)
+      if (!('error' in result)) {
+        expect(result.state.monsters).toHaveLength(1)
+        expect(result.state.monsters[0].type).toBe('gajigajimushi')
+      }
+    })
+
+    it('should spawn lizardman when nutrient is 17 (lower boundary)', () => {
+      const grid = createGrid(10, 10, 'soil')
+      grid[5][5].nutrientAmount = 17
+      grid[5][4].type = 'empty'
+      const state = createGameState({ grid })
+
+      const result = dig(state, { x: 5, y: 5 })
+
+      expect('error' in result).toBe(false)
+      if (!('error' in result)) {
+        expect(result.state.monsters).toHaveLength(1)
+        expect(result.state.monsters[0].type).toBe('lizardman')
+      }
     })
   })
 })

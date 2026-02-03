@@ -1,3 +1,4 @@
+import { NUTRIENT_SPAWN_THRESHOLDS } from './constants'
 import type { Cell, GameEvent, GameState, Monster, Position } from './types'
 import { MOVEMENT_LIFE_COST, MONSTER_CONFIGS } from './constants'
 import { calculateMove, MoveResult } from './movement'
@@ -12,6 +13,16 @@ export function generateMonsterId(): string {
 
 export function resetMonsterIdCounter(): void {
   monsterIdCounter = 0
+}
+
+function getMonsterTypeByNutrient(nutrientAmount: number): MonsterType {
+  if (nutrientAmount >= NUTRIENT_SPAWN_THRESHOLDS.LIZARDMAN) {
+    return 'lizardman'
+  }
+  if (nutrientAmount >= NUTRIENT_SPAWN_THRESHOLDS.GAJIGAJIMUSHI) {
+    return 'gajigajimushi'
+  }
+  return 'nijirigoke'
 }
 
 interface PlannedMove {
@@ -107,9 +118,7 @@ export function resolveConflicts(
 /**
  * Apply all resolved movements to monsters
  */
-export function applyMovements(
-  plannedMoves: PlannedMove[]
-): { monsters: Monster[] } {
+export function applyMovements(plannedMoves: PlannedMove[]): { monsters: Monster[] } {
   const movedMonsters = plannedMoves.map((move) => ({
     ...move.monster,
     position: move.result.position,
@@ -197,7 +206,7 @@ export function decreaseLifeForMoved(
       if (!moved) return monster
 
       if (monster.type === 'nijirigoke' && monster.carryingNutrient > 0) {
-        return { ...monster, carryingNutrient: monster.carryingNutrient -1 }
+        return { ...monster, carryingNutrient: monster.carryingNutrient - 1 }
       }
       const newLife = monster.life - MOVEMENT_LIFE_COST
       if (newLife <= 0) {
@@ -270,9 +279,9 @@ export function tick(
 export function isAdjacentToEmpty(position: Position, grid: Cell[][]): boolean {
   const directions = [
     { x: 0, y: -1 }, // up
-    { x: 0, y: 1 },  // down
+    { x: 0, y: 1 }, // down
     { x: -1, y: 0 }, // left
-    { x: 1, y: 0 },  // right
+    { x: 1, y: 0 }, // right
   ]
 
   for (const dir of directions) {
@@ -346,12 +355,13 @@ export function dig(
   const availableNutrients = depleteOnDig(cell.nutrientAmount)
 
   // Spawn Nijirigoke with life based on nutrients
-  const config = MONSTER_CONFIGS.nijirigoke
+  const monsterType = getMonsterTypeByNutrient(cell.nutrientAmount)
+  const config = MONSTER_CONFIGS[monsterType]
   const spawnedLife = Math.max(1, Math.min(availableNutrients, config.life))
 
   const newMonster: Monster = {
     id: generateMonsterId(),
-    type: 'nijirigoke',
+    type: monsterType,
     position: { ...position },
     direction: (['up', 'down', 'left', 'right'] as const)[Math.floor(Math.random() * 4)],
     pattern: config.pattern,
@@ -379,11 +389,7 @@ export function dig(
  * Create initial game state
  * Includes an initial empty cell at the top center for digging entry point
  */
-export function createGameState(
-  width: number,
-  height: number,
-  soilRatio: number = 0.7
-): GameState {
+export function createGameState(width: number, height: number, soilRatio: number = 0.7): GameState {
   const grid: Cell[][] = []
 
   // Calculate entry point position (top center, one row below the wall)
