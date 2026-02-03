@@ -171,14 +171,52 @@ describe('Simulation', () => {
   })
 
   describe('decreaseLifeForMoved', () => {
-    it('should decrease life for monsters that moved', () => {
-      const monster = createMonster({ id: 'm1', position: { x: 3, y: 2 }, life: 10 })
+    it('should consume nutrient instead of life for nijirigoke with nutrients', () => {
+      const monster = createMonster({
+        id: 'm1',
+        position: { x: 3, y: 2 },
+        life: 10,
+        carryingNutrient: 5,
+      })
       const original = new Map([['m1', { x: 2, y: 2 }]])
       const grid = createGrid(10, 10)
 
       const result = decreaseLifeForMoved([monster], original, grid)
 
+      expect(result.monsters[0].life).toBe(10)
+      expect(result.monsters[0].carryingNutrient).toBe(4)
+    })
+
+    it('should decrease life when nijirigoke has no nutrients', () => {
+      const monster = createMonster({
+        id: 'm1',
+        type: 'nijirigoke',
+        position: { x: 3, y: 2 },
+        life: 10,
+        carryingNutrient: 0,
+      })
+      const original = new Map([['m1', { x: 2, y: 2 }]])
+      const grid = createGrid(10, 10)
+
+      const result = decreaseLifeForMoved([monster], original, grid)
       expect(result.monsters[0].life).toBe(9)
+      expect(result.monsters[0].carryingNutrient).toBe(0)
+    })
+
+    it('should decrease life when gajigajimushi has no nutrients', () => {
+      const monster = createMonster({
+        id: 'm1',
+        type: 'gajigajimushi',
+        position: { x: 3, y: 2 },
+        life: 10,
+        carryingNutrient: 0,
+      })
+      const original = new Map([['m1', { x: 2, y: 2 }]])
+      const grid = createGrid(10, 10)
+
+      const result = decreaseLifeForMoved([monster], original, grid)
+      expect(result.monsters[0].life).toBe(9)
+      expect(result.monsters[0].carryingNutrient).toBe(0)
     })
 
     it('should not decrease life for stationary monsters', () => {
@@ -210,6 +248,7 @@ describe('Simulation', () => {
 
       const monster = createMonster({
         id: 'm1',
+        type: 'gajigajimushi',
         position: { x: 3, y: 2 },
         life: 1,
         carryingNutrient: 8,

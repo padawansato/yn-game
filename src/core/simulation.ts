@@ -196,6 +196,9 @@ export function decreaseLifeForMoved(
       const moved = original.x !== monster.position.x || original.y !== monster.position.y
       if (!moved) return monster
 
+      if (monster.type === 'nijirigoke' && monster.carryingNutrient > 0) {
+        return { ...monster, carryingNutrient: monster.carryingNutrient -1 }
+      }
       const newLife = monster.life - MOVEMENT_LIFE_COST
       if (newLife <= 0) {
         events.push({ type: 'MONSTER_DIED', monster, cause: 'starvation' })
