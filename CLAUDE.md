@@ -40,6 +40,39 @@ docker compose build --no-cache
 - changeごとにfeatureブランチ: `feature/food-chain-system`
 - アーカイブ時にmainへマージ
 
+## OpenSpec (opsx) ワークフロー
+
+### 基本フロー
+```
+opsx:new → opsx:continue (繰り返し) → 実装 → opsx:archive
+```
+
+### 各コマンドの役割
+| コマンド | 目的 |
+|---------|------|
+| `opsx:new <name>` | 新しいchangeを作成 |
+| `opsx:continue` | 次のアーティファクトを作成（proposal → specs → design → tasks） |
+| `opsx:ff` | 全アーティファクトを一気に作成 |
+| `opsx:archive` | **sync + アーカイブ**（main specs更新 + フォルダ移動） |
+| `opsx:sync` | syncのみ（main specs更新、changesに残す）※特殊ケース用 |
+
+### ディレクトリ構造
+```
+openspec/
+├── specs/           ← メインのスペック（プロジェクト全体の仕様）
+├── changes/         ← 作業中の変更
+│   └── <name>/
+│       ├── proposal.md
+│       ├── specs/   ← delta specs（この変更で追加/修正する仕様）
+│       ├── design.md
+│       └── tasks.md
+└── archive/         ← 完了した変更
+```
+
+### sync vs archive
+- **archive**: 通常はこれだけでOK（sync + アーカイブを一括実行）
+- **sync**: changesに残したままmain specsだけ更新したい場合
+
 ### コミットタイミング
 1. **アーティファクト作成時** - proposal/spec/design/tasks作成後
 2. **実装中** - 数タスク完了ごと（tasks.md更新と同期）
