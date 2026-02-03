@@ -1,4 +1,5 @@
 import type { Cell, Direction, Monster, Position } from '../types'
+import { HUNGER_THRESHOLD_RATIO } from '../constants'
 import { getForwardPosition, getTurnDirections, isValidMove } from './straight'
 
 /**
@@ -30,22 +31,74 @@ export function getPatrolPositions(nestPosition: Position, grid: Cell[][]): Posi
 }
 
 /**
- * Check if a position has enough open area for a nest (3x3 or larger open area)
+ * Check if a 2x3 or 3x2 contiguous open space exists containing the position
+ */
+export function has2x3Space(position: Position, grid: Cell[][]): boolean {
+  // Check all possible 2x3 and 3x2 rectangles that include the position
+  const patterns = [
+    // 2x3 (width=3, height=2) patterns - position can be at any of the 6 cells
+    { offsets: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 }] },
+    { offsets: [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: -1, y: 1 }, { x: 0, y: 1 }, { x: 1, y: 1 }] },
+    { offsets: [{ x: -2, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 0 }, { x: -2, y: 1 }, { x: -1, y: 1 }, { x: 0, y: 1 }] },
+    { offsets: [{ x: 0, y: -1 }, { x: 1, y: -1 }, { x: 2, y: -1 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }] },
+    { offsets: [{ x: -1, y: -1 }, { x: 0, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }] },
+    { offsets: [{ x: -2, y: -1 }, { x: -1, y: -1 }, { x: 0, y: -1 }, { x: -2, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 0 }] },
+    // 3x2 (width=2, height=3) patterns - position can be at any of the 6 cells
+    { offsets: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 0, y: 2 }, { x: 1, y: 2 }] },
+    { offsets: [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: -1, y: 1 }, { x: 0, y: 1 }, { x: -1, y: 2 }, { x: 0, y: 2 }] },
+    { offsets: [{ x: 0, y: -1 }, { x: 1, y: -1 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }] },
+    { offsets: [{ x: -1, y: -1 }, { x: 0, y: -1 }, { x: -1, y: 0 }, { x: 0, y: 0 }, { x: -1, y: 1 }, { x: 0, y: 1 }] },
+    { offsets: [{ x: 0, y: -2 }, { x: 1, y: -2 }, { x: 0, y: -1 }, { x: 1, y: -1 }, { x: 0, y: 0 }, { x: 1, y: 0 }] },
+    { offsets: [{ x: -1, y: -2 }, { x: 0, y: -2 }, { x: -1, y: -1 }, { x: 0, y: -1 }, { x: -1, y: 0 }, { x: 0, y: 0 }] },
+  ]
+
+  for (const pattern of patterns) {
+    const allOpen = pattern.offsets.every((offset) => {
+      const pos = { x: position.x + offset.x, y: position.y + offset.y }
+      return isValidMove(pos, grid)
+    })
+    if (allOpen) return true
+  }
+
+  return false
+}
+
+/**
+ * Check if a position has enough open area for a nest (2x3 or 3x2 contiguous space)
  */
 export function canEstablishNest(position: Position, grid: Cell[][]): boolean {
-  let openCount = 0
+  return has2x3Space(position, grid)
+}
 
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
-      const pos = { x: position.x + dx, y: position.y + dy }
-      if (isValidMove(pos, grid)) {
-        openCount++
-      }
+/**
+ * Get all valid adjacent positions (4 directions: up, down, left, right)
+ */
+export function getAdjacentPositions(position: Position, grid: Cell[][]): Position[] {
+  const positions: Position[] = []
+  const directions = [
+    { x: 0, y: -1 }, // up
+    { x: 0, y: 1 }, // down
+    { x: -1, y: 0 }, // left
+    { x: 1, y: 0 }, // right
+  ]
+
+  for (const dir of directions) {
+    const pos = { x: position.x + dir.x, y: position.y + dir.y }
+    if (isValidMove(pos, grid)) {
+      positions.push(pos)
     }
   }
 
-  // Need at least 5 open cells (including center) for reasonable nest
-  return openCount >= 5
+  return positions
+}
+
+/**
+ * Check if a position is within patrol range of the nest (within 2 cells)
+ */
+export function isWithinPatrolRange(position: Position, nestPosition: Position): boolean {
+  const dx = Math.abs(position.x - nestPosition.x)
+  const dy = Math.abs(position.y - nestPosition.y)
+  return dx <= 2 && dy <= 2
 }
 
 /**
@@ -64,31 +117,74 @@ export function getDirectionToward(from: Position, to: Position): Direction {
 }
 
 /**
+ * Check if monster is hungry (for internal use)
+ */
+function isHungry(monster: Monster): boolean {
+  return monster.life < monster.maxLife * HUNGER_THRESHOLD_RATIO
+}
+
+/**
+ * Find prey direction from current position
+ */
+function findPreyDirection(
+  monster: Monster,
+  monsters: Monster[],
+  grid: Cell[][]
+): Direction | null {
+  if (!isHungry(monster) || monster.predationTargets.length === 0) {
+    return null
+  }
+
+  const directions: Direction[] = ['up', 'down', 'left', 'right']
+  let closestDirection: Direction | null = null
+  let closestDistance = Infinity
+
+  for (const dir of directions) {
+    let pos = monster.position
+
+    // Scan up to 5 cells in each direction
+    for (let i = 0; i < 5; i++) {
+      pos = getForwardPosition(pos, dir)
+      if (!isValidMove(pos, grid)) break
+
+      const preyAtPos = monsters.find(
+        (m) =>
+          m.id !== monster.id &&
+          m.position.x === pos.x &&
+          m.position.y === pos.y &&
+          monster.predationTargets.includes(m.type)
+      )
+
+      if (preyAtPos) {
+        const distance = i + 1
+        if (distance < closestDistance) {
+          closestDistance = distance
+          closestDirection = dir
+        }
+        break
+      }
+    }
+  }
+
+  return closestDirection
+}
+
+/**
  * Calculate next move for stationary pattern (Lizardman)
- * Establishes nest in open area and patrols around it.
+ * Establishes nest in open area and patrols around it by moving one cell at a time.
  * Falls back to straight movement if no nest.
+ * When hungry, prioritizes moving toward prey within patrol range.
  */
 export function calculateStationaryMove(
   monster: Monster,
   grid: Cell[][],
+  monsters: Monster[] = [],
   randomFn: () => number = Math.random
 ): { position: Position; direction: Direction; nestPosition: Position | null } {
   // No nest yet - try to establish one
   if (monster.nestPosition === null) {
     if (canEstablishNest(monster.position, grid)) {
-      // Establish nest at current position and start patrolling
-      const patrolPositions = getPatrolPositions(monster.position, grid)
-      if (patrolPositions.length > 0) {
-        const targetIdx = Math.floor(randomFn() * patrolPositions.length)
-        const target = patrolPositions[targetIdx]
-        const direction = getDirectionToward(monster.position, target)
-        return {
-          position: target,
-          direction,
-          nestPosition: monster.position,
-        }
-      }
-      // Can establish but no patrol positions - stay
+      // Establish nest at current position, stay in place this turn
       return {
         position: monster.position,
         direction: monster.direction,
@@ -100,21 +196,43 @@ export function calculateStationaryMove(
     return straightFallback(monster, grid, randomFn)
   }
 
-  // Has nest - patrol around it
-  const patrolPositions = getPatrolPositions(monster.nestPosition, grid)
+  // Has nest - patrol by moving one cell at a time within patrol range
+  const adjacentPositions = getAdjacentPositions(monster.position, grid)
+  const patrolOptions = adjacentPositions.filter((pos) =>
+    isWithinPatrolRange(pos, monster.nestPosition!)
+  )
 
-  if (patrolPositions.length === 0) {
-    // No patrol positions available - stay at nest
+  if (patrolOptions.length === 0) {
+    // No valid patrol positions - stay in place
     return {
-      position: monster.nestPosition,
+      position: monster.position,
       direction: monster.direction,
       nestPosition: monster.nestPosition,
     }
   }
 
-  // Move to a random patrol position
-  const targetIdx = Math.floor(randomFn() * patrolPositions.length)
-  const target = patrolPositions[targetIdx]
+  // When hungry, prioritize moving toward prey
+  const preyDirection = findPreyDirection(monster, monsters, grid)
+  if (preyDirection) {
+    // Filter patrol options that move toward prey
+    const preyOptions = patrolOptions.filter((pos) => {
+      const moveDir = getDirectionToward(monster.position, pos)
+      return moveDir === preyDirection
+    })
+
+    if (preyOptions.length > 0) {
+      const target = preyOptions[0]
+      return {
+        position: target,
+        direction: preyDirection,
+        nestPosition: monster.nestPosition,
+      }
+    }
+  }
+
+  // Move to a random adjacent position within patrol range
+  const targetIdx = Math.floor(randomFn() * patrolOptions.length)
+  const target = patrolOptions[targetIdx]
   const direction = getDirectionToward(monster.position, target)
 
   return {

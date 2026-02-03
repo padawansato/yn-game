@@ -42,18 +42,18 @@ describe('Integration Tests', () => {
           if (x === 0 || x === 9 || y === 0 || y === 9) {
             grid[y][x] = { type: 'wall', nutrientAmount: 0 }
           } else if (x === 3 && y === 3) {
-            // Soil block to dig
-            grid[y][x] = { type: 'soil', nutrientAmount: 50 }
+            // Soil block to dig - low nutrients to spawn Nijirigoke (below gajigajimushi threshold of 10)
+            grid[y][x] = { type: 'soil', nutrientAmount: 5 }
           }
         }
       }
 
       let state = createGameState({
         grid,
-        totalInitialNutrients: 50,
+        totalInitialNutrients: 5,
       })
 
-      // Dig to spawn Nijirigoke
+      // Dig to spawn Nijirigoke (nutrient < 10 spawns nijirigoke)
       const digResult1 = dig(state, { x: 3, y: 3 })
       expect('error' in digResult1).toBe(false)
       if (!('error' in digResult1)) {

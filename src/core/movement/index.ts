@@ -124,15 +124,17 @@ export function calculateMove(
       break
     }
     case 'stationary': {
-      const stationaryResult = calculateStationaryMove(monster, grid, randomFn)
+      // Stationary pattern handles prey detection internally
+      const stationaryResult = calculateStationaryMove(monster, grid, monsters, randomFn)
       result = {
         ...stationaryResult,
       }
-      break
+      // Skip common hunger behavior for stationary pattern
+      return result
     }
   }
 
-  // Apply hunger behavior for predators
+  // Apply hunger behavior for predators (non-stationary patterns only)
   if (isHungry(monster) && monster.predationTargets.length > 0) {
     const preyDirection = prioritizePreyDirection(
       monster,
