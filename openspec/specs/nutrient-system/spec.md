@@ -20,10 +20,14 @@ The system SHALL manage nutrients as internal parameters of soil blocks. Nutrien
 - **THEN** the total nutrient amount (sum of all soil nutrientAmount + all monster carryingNutrient) SHALL remain constant or decrease, never increase
 
 ### Requirement: Digging depletes nutrients
-The system SHALL spawn a Nijirigoke when digging soil with nutrients. The spawned monster's strength depends on the soil's nutrient amount.
+The system SHALL spawn a Nijirigoke when digging soil with nutrients. The spawned monster's strength depends on the soil's nutrient amount. Blocks can only be dug if adjacent to an empty space.
+
+#### Scenario: Dig constraint
+- **WHEN** the player attempts to dig a soil block
+- **THEN** the dig SHALL succeed only if the block is adjacent to an empty cell
 
 #### Scenario: Dig soil block with nutrients
-- **WHEN** the player digs a soil block with N > 0 nutrients
+- **WHEN** the player digs a soil block with N > 0 nutrients (adjacent to empty)
 - **THEN** the soil SHALL become empty, a Nijirigoke SHALL spawn, and 30% of N SHALL be lost
 
 #### Scenario: Monster strength from nutrients
@@ -31,8 +35,12 @@ The system SHALL spawn a Nijirigoke when digging soil with nutrients. The spawne
 - **THEN** its initial life SHALL be proportional to N (70% of N, capped at maxLife)
 
 #### Scenario: Dig nutrient-poor soil
-- **WHEN** the player digs a soil block with 0 nutrients
+- **WHEN** the player digs a soil block with 0 nutrients (adjacent to empty)
 - **THEN** the soil SHALL become empty but NO Nijirigoke SHALL spawn
+
+#### Scenario: Initial entry point
+- **WHEN** a new game starts
+- **THEN** the grid SHALL have an initial empty cell at the top center for digging entry
 
 ### Requirement: Nijirigoke absorbs nutrients from soil
 Nijirigoke SHALL absorb nutrients from adjacent soil blocks while moving through empty cells.
