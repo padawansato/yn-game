@@ -16,6 +16,10 @@ function createInitialState(): GameState {
   const width = 10
   const height = 8
 
+  // Calculate entry point position (top center, one row below the wall)
+  const entryX = Math.floor(width / 2)
+  const entryY = 1
+
   // Create grid with walls on borders
   const grid: Cell[][] = []
   for (let y = 0; y < height; y++) {
@@ -23,6 +27,9 @@ function createInitialState(): GameState {
     for (let x = 0; x < width; x++) {
       if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
         row.push({ type: 'wall', nutrientAmount: 0 })
+      } else if (x === entryX && y === entryY) {
+        // Entry point - initial empty cell for digging
+        row.push({ type: 'empty', nutrientAmount: 0 })
       } else {
         row.push({ type: 'soil', nutrientAmount: 0 })
       }
