@@ -191,6 +191,14 @@ function getTopMonster(monsters: Monster[]): Monster | null {
     DISPLAY_PRIORITY[curr.type] < DISPLAY_PRIORITY[top.type] ? curr : top
   )
 }
+
+// 養分レベルに応じたクラス名を返す
+function getNutrientLevel(amount: number): 'low' | 'mid' | 'high' | null {
+  if (amount <= 0) return null
+  if (amount >= 17) return 'high' // リザードマン
+  if (amount >= 10) return 'mid' // ガジガジムシ
+  return 'low' // ニジリゴケ
+}
 </script>
 
 <template>
@@ -241,9 +249,8 @@ function getTopMonster(monsters: Monster[]): Monster | null {
             class="overlap-badge"
           >{{ getOverlapCount(x, y) }}</span>
           <span
-            v-if="cell.type === 'soil' && cell.nutrientAmount > 0"
-            class="nutrient-indicator"
-            :style="{ opacity: Math.min(1, cell.nutrientAmount / 50) }"
+            v-if="cell.type === 'soil' && getNutrientLevel(cell.nutrientAmount)"
+            :class="['nutrient-indicator', `nutrient-${getNutrientLevel(cell.nutrientAmount)}`]"
           />
         </div>
       </div>
@@ -256,6 +263,13 @@ function getTopMonster(monsters: Monster[]): Monster | null {
       <span class="legend-item"><span class="cell monster-nijirigoke">苔</span> ニジリゴケ</span>
       <span class="legend-item"><span class="cell monster-gajigajimushi">虫</span> ガジガジムシ</span>
       <span class="legend-item"><span class="cell monster-lizardman">蜥</span> リザードマン</span>
+    </div>
+
+    <div class="legend nutrient-legend">
+      <strong>養分:</strong>
+      <span class="legend-item"><span class="nutrient-dot nutrient-low" /> 1-9 → 苔</span>
+      <span class="legend-item"><span class="nutrient-dot nutrient-mid" /> 10-16 → 虫</span>
+      <span class="legend-item"><span class="nutrient-dot nutrient-high" /> 17+ → 蜥</span>
     </div>
 
     <div class="events">
@@ -380,10 +394,35 @@ h1 {
   position: absolute;
   bottom: 2px;
   right: 2px;
-  width: 6px;
-  height: 6px;
-  background: #ffd54f;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.nutrient-low {
+  background: #4caf50; /* 緑 - ニジリゴケ */
+}
+
+.nutrient-mid {
+  background: #5c6bc0; /* 青 - ガジガジムシ */
+}
+
+.nutrient-high {
+  background: #ef5350; /* 赤 - リザードマン */
+}
+
+.nutrient-legend {
+  margin-top: 0.5rem;
+}
+
+.nutrient-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-right: 4px;
 }
 
 .cell-wall {
