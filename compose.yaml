@@ -27,3 +27,19 @@ services:
     command: pnpm test:watch
     profiles:
       - test
+
+  e2e:
+    image: mcr.microsoft.com/playwright:v1.50.0-noble
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      - CI=true
+    command: sh -c "npm install @playwright/test && npx playwright test --reporter=list"
+    depends_on:
+      - app
+    profiles:
+      - e2e
+
+volumes:
+  playwright-cache:
