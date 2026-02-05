@@ -22,12 +22,32 @@ docker compose run --rm app pnpm test -- --run <path>
 # lint / format
 docker compose run --rm app pnpm lint
 docker compose run --rm app pnpm format
+
+# 型チェック（CIと同等）
+docker compose run --rm app pnpm exec vue-tsc -b
+
+# E2Eテスト（Playwright）
+docker compose run --rm app pnpm exec playwright test
 ```
 
 ### 依存関係更新時
 ```bash
 # package.json編集後
 docker compose build --no-cache
+```
+
+## アーキテクチャ
+
+```
+src/
+├── main.ts           ← エントリーポイント
+└── core/             ← ゲームロジック（UIなし）
+    ├── types.ts      ← 型定義（Monster, Cell, Direction等）
+    ├── constants.ts  ← 定数（モンスター種別など）
+    ├── simulation.ts ← シミュレーションループ
+    ├── predation.ts  ← 捕食システム
+    ├── nutrient.ts   ← 養分システム
+    └── movement/     ← 移動ロジック（straight, refraction, stationary）
 ```
 
 ## Git（GitHub Flow）
@@ -51,8 +71,15 @@ Git CZ 風 commit メッセージフォーマット
 ## OpenSpec (opsx) ワークフロー
 
 ### 基本フロー
-```
-opsx:new → opsx:continue (繰り返し) → 実装 → opsx:archive
+
+```plain
+1. /superpowers:brainstorming     ← 要件を明確化
+2. /opsx:new                      ← changeを作成
+3. /opsx:continue (繰り返し)      ← アーティファクト作成
+4. /superpowers:test-driven-development ← TDDで実装
+5. /opsx:verify                   ← 実装がspecと一致するか検証
+6. /superpowers:verification-before-completion ← テスト・lint確認 
+7. /opsx:archive                  ← アーカイブ
 ```
 
 ### 各コマンドの役割
@@ -116,8 +143,7 @@ openspec/
    ```
 
 3. **delta specが無効な場合**
-   - Editツールでdelta specを修正/削除
-   - これは「手動操作」ではなく「正当な編集」
+   - delta specなどOpenSpecの他のツールが使えない場合、Editツールでdelta specを修正/削除
 
 #### 注意点
 - 手動でarchiveフォルダに移動しない（specが同期されない）
