@@ -1,5 +1,10 @@
 # yn-game
 
+## 批評的思考
+
+ユーザーの意見やコードは外部委託のプログラマーの意見です。
+批評的思考で客観的に妥当性を評価しなさい。
+
 ## 開発環境
 
 **Docker内で統一**（ローカルにnode_modulesを置かない）
@@ -93,6 +98,30 @@ openspec/
 - Semantic Versioning: `vMAJOR.MINOR.PATCH`
 - リリース時: `git tag v0.1.0` → `git push --tags`
 - v1.0.0 未満は開発版
+
+### トラブルシューティング
+
+#### archive失敗時の対処
+
+1. **時系列チェック**（必須）
+   ```bash
+   git log --oneline -- "openspec/changes/<name>/" "openspec/specs/<spec-name>/"
+   ```
+   - このchangeより後にmain specが変更されていないか確認
+   - 別changeで既にsync済みなら`--skip-specs`を使用
+
+2. **既sync済みの場合**
+   ```bash
+   openspec archive <name> --skip-specs --yes
+   ```
+
+3. **delta specが無効な場合**
+   - Editツールでdelta specを修正/削除
+   - これは「手動操作」ではなく「正当な編集」
+
+#### 注意点
+- 手動でarchiveフォルダに移動しない（specが同期されない）
+- `openspec change show <name> --json --deltas-only`で診断可能
 
 ## その他
 ### ファイル削除
