@@ -70,8 +70,9 @@ playwright/.cache/
 # Local Netlify folder
 .netlify
 
-# Claude Code
-.claude/
+# Claude Code (except skills/)
+.claude/*
+!.claude/skills/
 
 # pnpm
 .pnpm-store/
