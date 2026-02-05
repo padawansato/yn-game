@@ -48,6 +48,7 @@ function createInitialState(): GameState {
     grid: initializedGrid,
     monsters: [],
     totalInitialNutrients: 200,
+    digPower: 100,
   }
 }
 

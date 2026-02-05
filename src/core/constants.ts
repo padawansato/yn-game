@@ -61,3 +61,6 @@ export const NUTRIENT_SPAWN_THRESHOLDS = {
   GAJIGAJIMUSHI: 10,
   LIZARDMAN: 17,
 } as const
+
+// Initial dig power
+export const INITIAL_DIG_POWER = 100

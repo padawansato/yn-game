@@ -338,6 +338,7 @@ describe('Nutrient System', () => {
           createMonster({ id: 'monster-2', carryingNutrient: 3 }),
         ],
         totalInitialNutrients: 100,
+        digPower: 100,
       }
 
       const total = getTotalNutrients(state)
@@ -354,6 +355,7 @@ describe('Nutrient System', () => {
         grid,
         monsters: [],
         totalInitialNutrients: 100,
+        digPower: 100,
       }
 
       expect(isWorldDying(state, 0.1)).toBe(true) // 5 < 100 * 0.1
@@ -367,6 +369,7 @@ describe('Nutrient System', () => {
         grid,
         monsters: [],
         totalInitialNutrients: 100,
+        digPower: 100,
       }
 
       expect(isWorldDying(state, 0.1)).toBe(false) // 50 >= 100 * 0.1

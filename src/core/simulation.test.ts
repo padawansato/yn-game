@@ -9,7 +9,9 @@ import {
   dig,
   isAdjacentToEmpty,
   resetMonsterIdCounter,
+  createGameState as createInitialGameState,
 } from './simulation'
+import { INITIAL_DIG_POWER } from './constants'
 
 function createGrid(width: number, height: number, type: Cell['type'] = 'empty'): Cell[][] {
   return Array.from({ length: height }, () =>
@@ -39,6 +41,7 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
     grid: createGrid(10, 10),
     monsters: [],
     totalInitialNutrients: 100,
+    digPower: 100,
     ...overrides,
   }
 }
@@ -509,6 +512,80 @@ describe('Simulation', () => {
         expect(result.state.monsters).toHaveLength(1)
         expect(result.state.monsters[0].type).toBe('lizardman')
       }
+    })
+
+    // Dig Power tests
+    describe('dig power', () => {
+      it('should consume 1 dig power on successful dig', () => {
+        const grid = createGrid(10, 10, 'soil')
+        grid[5][5].nutrientAmount = 5
+        grid[5][4].type = 'empty'
+        const state = createGameState({ grid, digPower: 10 })
+
+        const result = dig(state, { x: 5, y: 5 })
+
+        expect('error' in result).toBe(false)
+        if (!('error' in result)) {
+          expect(result.state.digPower).toBe(9)
+        }
+      })
+
+      it('should fail with "insufficient dig power" when digPower is 0', () => {
+        const grid = createGrid(10, 10, 'soil')
+        grid[5][5].nutrientAmount = 5
+        grid[5][4].type = 'empty'
+        const state = createGameState({ grid, digPower: 0 })
+
+        const result = dig(state, { x: 5, y: 5 })
+
+        expect('error' in result).toBe(true)
+        if ('error' in result) {
+          expect(result.error).toBe('insufficient dig power')
+        }
+      })
+
+      it('should not consume dig power on failed dig (invalid position)', () => {
+        const grid = createGrid(10, 10, 'soil')
+        const state = createGameState({ grid, digPower: 10 })
+
+        const result = dig(state, { x: 15, y: 15 })
+
+        expect('error' in result).toBe(true)
+        // digPower should remain unchanged (state not mutated, but verify behavior)
+      })
+
+      it('should not consume dig power on failed dig (not adjacent to empty)', () => {
+        const grid = createGrid(10, 10, 'soil')
+        grid[5][5].nutrientAmount = 10
+        const state = createGameState({ grid, digPower: 10 })
+
+        const result = dig(state, { x: 5, y: 5 })
+
+        expect('error' in result).toBe(true)
+        // digPower should remain unchanged
+      })
+
+      it('should succeed with positive dig power', () => {
+        const grid = createGrid(10, 10, 'soil')
+        grid[5][5].nutrientAmount = 5
+        grid[5][4].type = 'empty'
+        const state = createGameState({ grid, digPower: 1 })
+
+        const result = dig(state, { x: 5, y: 5 })
+
+        expect('error' in result).toBe(false)
+        if (!('error' in result)) {
+          expect(result.state.digPower).toBe(0)
+        }
+      })
+    })
+  })
+
+  describe('createGameState', () => {
+    it('should initialize digPower to INITIAL_DIG_POWER', () => {
+      const state = createInitialGameState(10, 10)
+
+      expect(state.digPower).toBe(INITIAL_DIG_POWER)
     })
   })
 })

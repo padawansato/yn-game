@@ -1,5 +1,5 @@
-import { NUTRIENT_SPAWN_THRESHOLDS } from './constants'
-import type { Cell, GameEvent, GameState, Monster, Position } from './types'
+import { NUTRIENT_SPAWN_THRESHOLDS, INITIAL_DIG_POWER } from './constants'
+import type { Cell, GameEvent, GameState, Monster, MonsterType, Position } from './types'
 import { MOVEMENT_LIFE_COST, MONSTER_CONFIGS } from './constants'
 import { calculateMove, MoveResult } from './movement'
 import { processPredation } from './predation'
@@ -301,11 +301,17 @@ export function isAdjacentToEmpty(position: Position, grid: Cell[][]): boolean {
 /**
  * Dig action - dig soil and spawn Nijirigoke (only if soil has nutrients)
  * Can only dig blocks adjacent to empty cells
+ * Requires dig power to execute
  */
 export function dig(
   state: GameState,
   position: Position
 ): { state: GameState; events: GameEvent[] } | { error: string } {
+  // Check dig power first
+  if (state.digPower <= 0) {
+    return { error: 'insufficient dig power' }
+  }
+
   // Validate position
   if (
     position.y < 0 ||
@@ -346,6 +352,7 @@ export function dig(
       state: {
         ...state,
         grid: newGrid,
+        digPower: state.digPower - 1,
       },
       events,
     }
@@ -380,6 +387,7 @@ export function dig(
       ...state,
       grid: newGrid,
       monsters: [...state.monsters, newMonster],
+      digPower: state.digPower - 1,
     },
     events,
   }
@@ -418,5 +426,6 @@ export function createGameState(width: number, height: number, soilRatio: number
     grid,
     monsters: [],
     totalInitialNutrients: 0,
+    digPower: INITIAL_DIG_POWER,
   }
 }

@@ -19,7 +19,7 @@ function createMonster(overrides: Partial<Monster> = {}): Monster {
     maxLife: 30,
     attack: 3,
     predationTargets: ['nijirigoke'],
-    carryingNutrient: null,
+    carryingNutrient: 0,
     nestPosition: null,
     ...overrides,
   }

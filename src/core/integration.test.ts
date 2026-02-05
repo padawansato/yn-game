@@ -23,6 +23,7 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
     grid: createGrid(10, 10),
     monsters: [],
     totalInitialNutrients: 100,
+    digPower: 100,
     ...overrides,
   }
 }

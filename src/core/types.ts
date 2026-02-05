@@ -42,6 +42,7 @@ export interface GameState {
   grid: Cell[][]
   monsters: Monster[]
   totalInitialNutrients: number
+  digPower: number
 }
 
 // Game events

@@ -19,7 +19,7 @@ describe('Types', () => {
       maxLife: 10,
       attack: 0,
       predationTargets: [],
-      carryingNutrient: null,
+      carryingNutrient: 0,
       nestPosition: null,
     }
 
@@ -39,7 +39,7 @@ describe('Types', () => {
       maxLife: 30,
       attack: 3,
       predationTargets: ['nijirigoke'],
-      carryingNutrient: null,
+      carryingNutrient: 0,
       nestPosition: null,
     }
 
