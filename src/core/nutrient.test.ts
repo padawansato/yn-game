@@ -339,6 +339,7 @@ describe('Nutrient System', () => {
         ],
         totalInitialNutrients: 100,
         digPower: 100,
+        gameTime: 0,
       }
 
       const total = getTotalNutrients(state)
@@ -356,6 +357,7 @@ describe('Nutrient System', () => {
         monsters: [],
         totalInitialNutrients: 100,
         digPower: 100,
+        gameTime: 0,
       }
 
       expect(isWorldDying(state, 0.1)).toBe(true) // 5 < 100 * 0.1
@@ -370,6 +372,7 @@ describe('Nutrient System', () => {
         monsters: [],
         totalInitialNutrients: 100,
         digPower: 100,
+        gameTime: 0,
       }
 
       expect(isWorldDying(state, 0.1)).toBe(false) // 50 >= 100 * 0.1

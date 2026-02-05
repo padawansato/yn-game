@@ -42,6 +42,7 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
     monsters: [],
     totalInitialNutrients: 100,
     digPower: 100,
+    gameTime: 0,
     ...overrides,
   }
 }

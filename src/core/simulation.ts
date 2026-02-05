@@ -427,5 +427,6 @@ export function createGameState(width: number, height: number, soilRatio: number
     monsters: [],
     totalInitialNutrients: 0,
     digPower: INITIAL_DIG_POWER,
+    gameTime: 0,
   }
 }

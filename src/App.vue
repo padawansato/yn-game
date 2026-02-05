@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import {
   initializeNutrients,
   tick,
   dig,
   getTotalNutrients,
+  GameLoop,
   type GameState,
   type Cell,
   type Monster,
@@ -49,13 +50,39 @@ function createInitialState(): GameState {
     monsters: [],
     totalInitialNutrients: 200,
     digPower: 100,
+    gameTime: 0,
   }
 }
 
 const gameState = ref<GameState>(createInitialState())
 const events = ref<string[]>([])
-const autoRunning = ref(false)
-let autoInterval: number | null = null
+const isRunning = ref(false)
+const isPaused = ref(false)
+
+// Game Loop
+function executeTickWithEvents(state: GameState): GameState {
+  const result = tick(state)
+  result.events.forEach((e) => {
+    events.value.unshift(`[${e.type}] ${formatEvent(e)}`)
+  })
+  return { ...result.state, gameTime: state.gameTime + 1 }
+}
+
+let gameLoop: GameLoop | null = null
+
+function initGameLoop() {
+  gameLoop = new GameLoop(gameState.value, (state) => {
+    const newState = executeTickWithEvents(state)
+    gameState.value = newState
+    return newState
+  }, 500)
+}
+
+initGameLoop()
+
+onUnmounted(() => {
+  gameLoop?.stop()
+})
 
 // Actions
 function handleCellClick(x: number, y: number) {
@@ -71,30 +98,44 @@ function handleCellClick(x: number, y: number) {
 }
 
 function handleTick() {
-  const result = tick(gameState.value)
-  gameState.value = result.state
-  result.events.forEach((e) => {
-    events.value.unshift(`[${e.type}] ${formatEvent(e)}`)
-  })
+  gameState.value = executeTickWithEvents(gameState.value)
 }
 
-function toggleAuto() {
-  if (autoRunning.value) {
-    if (autoInterval) clearInterval(autoInterval)
-    autoInterval = null
-    autoRunning.value = false
-  } else {
-    autoRunning.value = true
-    autoInterval = setInterval(handleTick, 500)
+function startGame() {
+  if (gameLoop) {
+    gameLoop.start()
+    isRunning.value = true
+    isPaused.value = false
+  }
+}
+
+function pauseGame() {
+  if (gameLoop) {
+    gameLoop.pause()
+    isPaused.value = true
+  }
+}
+
+function resumeGame() {
+  if (gameLoop) {
+    gameLoop.resume()
+    isPaused.value = false
+  }
+}
+
+function stopGame() {
+  if (gameLoop) {
+    gameLoop.stop()
+    isRunning.value = false
+    isPaused.value = false
   }
 }
 
 function handleReset() {
-  if (autoInterval) clearInterval(autoInterval)
-  autoInterval = null
-  autoRunning.value = false
+  stopGame()
   gameState.value = createInitialState()
   events.value = []
+  initGameLoop()
 }
 
 function formatEvent(e: { type: string; [key: string]: unknown }): string {
@@ -208,13 +249,34 @@ function getNutrientLevel(amount: number): 'low' | 'mid' | 'high' | null {
 
     <div class="controls">
       <button
-        :disabled="autoRunning"
+        :disabled="isRunning && !isPaused"
         @click="handleTick"
       >
         Tick
       </button>
-      <button @click="toggleAuto">
-        {{ autoRunning ? 'Stop' : 'Auto' }}
+      <button
+        v-if="!isRunning"
+        @click="startGame"
+      >
+        Start
+      </button>
+      <button
+        v-else-if="isPaused"
+        @click="resumeGame"
+      >
+        Resume
+      </button>
+      <button
+        v-else
+        @click="pauseGame"
+      >
+        Pause
+      </button>
+      <button
+        v-if="isRunning"
+        @click="stopGame"
+      >
+        Stop
       </button>
       <button @click="handleReset">
         Reset
@@ -223,10 +285,14 @@ function getNutrientLevel(amount: number): 'low' | 'mid' | 'high' | null {
 
     <div class="status">
       <div class="status-row">
+        <span>ゲーム時間: {{ gameState.gameTime }}</span>
         <span>養分: {{ totalNutrients }} / {{ gameState.totalInitialNutrients }}</span>
         <span :class="['dig-power', { 'dig-power-exhausted': gameState.digPower <= 0 }]">
           掘りパワー: {{ gameState.digPower }}
-          <span v-if="gameState.digPower <= 0" class="dig-power-warning">（掘削不可）</span>
+          <span
+            v-if="gameState.digPower <= 0"
+            class="dig-power-warning"
+          >（掘削不可）</span>
         </span>
       </div>
       <div

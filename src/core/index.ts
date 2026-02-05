@@ -75,3 +75,7 @@ export {
   generateMonsterId,
   resetMonsterIdCounter,
 } from './simulation'
+
+// Game Loop
+export { GameLoop } from './game-loop'
+export type { TickCallback } from './game-loop'
