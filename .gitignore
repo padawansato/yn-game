@@ -59,6 +59,11 @@ tmp/
 # Vitest
 vitest.timestamp-*
 
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
 # Debug
 .debug/
 
