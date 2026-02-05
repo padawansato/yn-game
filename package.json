@@ -1,6 +1,7 @@
 {
   "name": "yn-game",
   "version": "0.1.0",
+  "packageManager": "pnpm@10.28.2",
   "description": "Simplified 'Yuusha no Kuse ni Namaiki da' - Tower Defense with Food Chain",
   "type": "module",
   "scripts": {
