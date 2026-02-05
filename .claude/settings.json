@@ -1,0 +1,24 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [{
+          "type": "command",
+          "command": ".claude/hooks/lint-format.sh",
+          "async": true,
+          "statusMessage": "Running lint & format..."
+        }]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [{
+          "type": "command",
+          "command": ".claude/hooks/lint-format.sh",
+          "async": true,
+          "statusMessage": "Running lint & format..."
+        }]
+      }
+    ]
+  }
+}
