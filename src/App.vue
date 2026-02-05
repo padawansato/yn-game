@@ -222,7 +222,13 @@ function getNutrientLevel(amount: number): 'low' | 'mid' | 'high' | null {
     </div>
 
     <div class="status">
-      <div>養分: {{ totalNutrients }} / {{ gameState.totalInitialNutrients }}</div>
+      <div class="status-row">
+        <span>養分: {{ totalNutrients }} / {{ gameState.totalInitialNutrients }}</span>
+        <span :class="['dig-power', { 'dig-power-exhausted': gameState.digPower <= 0 }]">
+          掘りパワー: {{ gameState.digPower }}
+          <span v-if="gameState.digPower <= 0" class="dig-power-warning">（掘削不可）</span>
+        </span>
+      </div>
       <div
         v-for="(info, type) in monsterSummary"
         :key="type"
@@ -340,6 +346,31 @@ h1 {
   padding: 0.5rem;
   background: #222;
   border-radius: 4px;
+}
+
+.status-row {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.dig-power {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+.dig-power-exhausted {
+  color: #ef5350;
+}
+
+.dig-power-warning {
+  font-size: 0.85em;
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .grid {
