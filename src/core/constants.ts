@@ -14,7 +14,7 @@ export const MONSTER_CONFIGS: Record<MonsterType, MonsterConfig> = {
   nijirigoke: {
     type: 'nijirigoke',
     pattern: 'straight',
-    life: 10,
+    life: 16,
     attack: 0,
     predationTargets: [],
     canCarryNutrients: true,

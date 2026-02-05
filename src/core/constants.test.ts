@@ -7,10 +7,10 @@ import {
 
 describe('Constants', () => {
   describe('MONSTER_CONFIGS', () => {
-    it('Nijirigoke should have straight pattern and life=10', () => {
+    it('Nijirigoke should have straight pattern and life=16', () => {
       const config = MONSTER_CONFIGS.nijirigoke
       expect(config.pattern).toBe('straight')
-      expect(config.life).toBe(10)
+      expect(config.life).toBe(16)
       expect(config.canCarryNutrients).toBe(true)
       expect(config.predationTargets).toEqual([])
     })
