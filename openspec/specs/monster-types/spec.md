@@ -5,7 +5,7 @@ The system SHALL define three monster types with distinct attributes and movemen
 
 #### Scenario: Nijirigoke (Moss) - Straight type
 - **WHEN** a Nijirigoke is created
-- **THEN** it SHALL have movementPattern="straight", life=10, canCarryNutrients=true, predationTarget=none
+- **THEN** it SHALL have movementPattern="straight", life=16, canCarryNutrients=true, predationTarget=none
 
 #### Scenario: Gajigajimushi (Insect) - Refraction type
 - **WHEN** a Gajigajimushi is created
