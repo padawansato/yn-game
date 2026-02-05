@@ -36,6 +36,9 @@ docker compose build --no-cache
 2. 実装 → コミット → push
 3. PR作成 → セルフレビュー → mainへマージ
 
+### Git Commit
+Git CZ 風 commit メッセージフォーマット
+
 ### OpenSpecとの連携
 - changeごとにfeatureブランチ: `feature/food-chain-system`
 - アーカイブ時にmainへマージ
