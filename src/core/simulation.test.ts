@@ -366,6 +366,16 @@ describe('Simulation', () => {
       expect(result.state.monsters[0].life).toBe(9)
     })
 
+    it('should increment gameTime', () => {
+      const state = createGameState({ gameTime: 0 })
+
+      const result1 = tick(state)
+      expect(result1.state.gameTime).toBe(1)
+
+      const result2 = tick(result1.state)
+      expect(result2.state.gameTime).toBe(2)
+    })
+
     it('should process predation when monsters move to same cell', () => {
       // Predator at (2,2) moving right to (3,2)
       // Prey at (4,2) moving left to (3,2)

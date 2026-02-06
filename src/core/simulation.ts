@@ -281,6 +281,7 @@ export function tick(
       ...state,
       grid: nutrientResult.grid,
       monsters: nutrientResult.monsters,
+      gameTime: state.gameTime + 1,
     },
     events: allEvents,
   }
