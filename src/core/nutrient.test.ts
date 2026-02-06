@@ -393,6 +393,16 @@ describe('Nutrient System', () => {
       const large = exponentialRandom(10, mockRandom)
       expect(large).toBeGreaterThan(small)
     })
+
+    it('should return non-negative when u = 0', () => {
+      const value = exponentialRandom(1, () => 0)
+      expect(value).toBeGreaterThanOrEqual(0)
+    })
+
+    it('should return non-negative when u = 1', () => {
+      const value = exponentialRandom(1, () => 1)
+      expect(value).toBeGreaterThanOrEqual(0)
+    })
   })
 
   describe('initializeNutrients sparse distribution', () => {

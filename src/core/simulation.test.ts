@@ -114,6 +114,88 @@ describe('Simulation', () => {
       expect(positions).toContainEqual({ x: 2, y: 2 })
     })
 
+    it('should preserve all monsters when 3+ target same position with predation', () => {
+      const predator = createMonster({
+        id: 'predator',
+        type: 'gajigajimushi',
+        position: { x: 1, y: 2 },
+        predationTargets: ['nijirigoke'],
+      })
+      const prey = createMonster({
+        id: 'prey1',
+        type: 'nijirigoke',
+        position: { x: 3, y: 2 },
+      })
+      const bystander = createMonster({
+        id: 'bystander',
+        type: 'nijirigoke',
+        position: { x: 2, y: 3 },
+      })
+      const moves = [
+        {
+          monster: predator,
+          result: {
+            position: { x: 2, y: 2 },
+            direction: 'right' as const,
+            nestPosition: null,
+          },
+        },
+        {
+          monster: prey,
+          result: {
+            position: { x: 2, y: 2 },
+            direction: 'left' as const,
+            nestPosition: null,
+          },
+        },
+        {
+          monster: bystander,
+          result: {
+            position: { x: 2, y: 2 },
+            direction: 'up' as const,
+            nestPosition: null,
+          },
+        },
+      ]
+
+      const resolved = resolveConflicts(moves)
+
+      // All 3 monsters must be preserved (none lost)
+      expect(resolved).toHaveLength(3)
+      const ids = resolved.map((r) => r.monster.id).sort()
+      expect(ids).toEqual(['bystander', 'predator', 'prey1'])
+      // Bystander should be sent back to original position
+      const bystanderResult = resolved.find((r) => r.monster.id === 'bystander')!
+      expect(bystanderResult.result.position).toEqual({ x: 2, y: 3 })
+    })
+
+    it('should preserve all monsters when 3+ target same position without predation', () => {
+      const m1 = createMonster({ id: 'm1', position: { x: 1, y: 2 } })
+      const m2 = createMonster({ id: 'm2', position: { x: 3, y: 2 } })
+      const m3 = createMonster({ id: 'm3', position: { x: 2, y: 3 } })
+      const moves = [
+        {
+          monster: m1,
+          result: { position: { x: 2, y: 2 }, direction: 'right' as const, nestPosition: null },
+        },
+        {
+          monster: m2,
+          result: { position: { x: 2, y: 2 }, direction: 'left' as const, nestPosition: null },
+        },
+        {
+          monster: m3,
+          result: { position: { x: 2, y: 2 }, direction: 'up' as const, nestPosition: null },
+        },
+      ]
+
+      const resolved = resolveConflicts(moves, () => 0)
+
+      // All 3 must be preserved
+      expect(resolved).toHaveLength(3)
+      const ids = resolved.map((r) => r.monster.id).sort()
+      expect(ids).toEqual(['m1', 'm2', 'm3'])
+    })
+
     it('should allow predator and prey to same position', () => {
       const predator = createMonster({
         id: 'predator',

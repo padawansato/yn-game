@@ -14,7 +14,7 @@ export function exponentialRandom(
   randomFn: () => number = Math.random
 ): number {
   const u = randomFn()
-  return -Math.log(1 - u + 0.0001) * scale
+  return -Math.log(Math.max(1e-10, 1 - u)) * scale
 }
 
 /**

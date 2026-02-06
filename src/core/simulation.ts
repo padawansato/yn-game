@@ -92,6 +92,19 @@ export function resolveConflicts(
       // Predator gets the position, prey also moves (will be eaten)
       resolvedMoves.push(predatorMove)
       resolvedMoves.push(preyMove)
+
+      // Others stay in place
+      for (const move of moves) {
+        if (move !== predatorMove && move !== preyMove) {
+          resolvedMoves.push({
+            monster: move.monster,
+            result: {
+              ...move.result,
+              position: move.monster.position,
+            },
+          })
+        }
+      }
     } else {
       // Random selection for non-predation conflicts
       const winner = moves[Math.floor(randomFn() * moves.length)]
@@ -305,7 +318,8 @@ export function isAdjacentToEmpty(position: Position, grid: Cell[][]): boolean {
  */
 export function dig(
   state: GameState,
-  position: Position
+  position: Position,
+  randomFn: () => number = Math.random
 ): { state: GameState; events: GameEvent[] } | { error: string } {
   // Check dig power first
   if (state.digPower <= 0) {
@@ -370,7 +384,7 @@ export function dig(
     id: generateMonsterId(),
     type: monsterType,
     position: { ...position },
-    direction: (['up', 'down', 'left', 'right'] as const)[Math.floor(Math.random() * 4)],
+    direction: (['up', 'down', 'left', 'right'] as const)[Math.floor(randomFn() * 4)],
     pattern: config.pattern,
     life: spawnedLife,
     maxLife: config.life,
