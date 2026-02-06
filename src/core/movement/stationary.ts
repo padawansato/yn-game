@@ -1,6 +1,6 @@
 import type { Cell, Direction, Monster, Position } from '../types'
-import { HUNGER_THRESHOLD_RATIO } from '../constants'
 import { getForwardPosition, getTurnDirections, isValidMove } from './straight'
+import { isHungry } from './hunger'
 
 /**
  * Check if position is adjacent to nest (including diagonal)
@@ -114,13 +114,6 @@ export function getDirectionToward(from: Position, to: Position): Direction {
   } else {
     return dy > 0 ? 'down' : 'up'
   }
-}
-
-/**
- * Check if monster is hungry (for internal use)
- */
-function isHungry(monster: Monster): boolean {
-  return monster.life < monster.maxLife * HUNGER_THRESHOLD_RATIO
 }
 
 /**

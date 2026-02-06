@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import {
   GameState,
   Cell,
@@ -8,7 +8,6 @@ import {
   initializeNutrients,
   getTotalNutrients,
   isWorldDying,
-  resetMonsterIdCounter,
   MONSTER_CONFIGS,
 } from './index'
 
@@ -25,14 +24,12 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
     totalInitialNutrients: 100,
     digPower: 100,
     gameTime: 0,
+    nextMonsterId: 0,
     ...overrides,
   }
 }
 
 describe('Integration Tests', () => {
-  beforeEach(() => {
-    resetMonsterIdCounter()
-  })
 
   describe('Full game cycle', () => {
     it('should handle dig -> multiple ticks -> predation cycle', () => {

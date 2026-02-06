@@ -3,6 +3,7 @@ import {
   NUTRIENT_DEPLETION_RATIO,
   NUTRIENT_CARRY_CAPACITY,
   NUTRIENT_RELEASE_THRESHOLD,
+  MAX_NUTRIENT_PER_CELL,
 } from './constants'
 
 /**
@@ -45,7 +46,7 @@ export function initializeNutrients(
 
   const normalizedValues = rawValues.map((raw) => {
     const normalized = Math.round((raw / rawSum) * totalAmount)
-    return Math.min(100, Math.max(0, normalized))
+    return Math.min(MAX_NUTRIENT_PER_CELL, Math.max(0, normalized))
   })
 
   let currentTotal = normalizedValues.reduce((sum, v) => sum + v, 0)
@@ -53,7 +54,7 @@ export function initializeNutrients(
 
   while (diff !== 0) {
     for (let i = 0; i < normalizedValues.length && diff !== 0; i++) {
-      if (diff > 0 && normalizedValues[i] < 100) {
+      if (diff > 0 && normalizedValues[i] < MAX_NUTRIENT_PER_CELL) {
         normalizedValues[i]++
         diff--
       } else if (diff < 0 && normalizedValues[i] > 0) {
@@ -68,7 +69,7 @@ export function initializeNutrients(
   const newGrid = grid.map((row) =>
     row.map((cell) => ({
       ...cell,
-      nutrientAmount: cell.type === 'soil' ? 0 : 0,
+      nutrientAmount: 0,
     }))
   )
 
@@ -206,14 +207,21 @@ export function releaseNutrient(
     return { monster, grid }
   }
 
-  // Release to first adjacent soil, leaving 1 nutrient
-  const targetSoil = adjacentSoil[0]
+  // Prefer facing direction for release target
+  const directionOffset = getDirectionOffset(monster.direction)
+  const facingPos = {
+    x: monster.position.x + directionOffset.x,
+    y: monster.position.y + directionOffset.y,
+  }
+  const targetSoil = adjacentSoil.find(
+    (s) => s.x === facingPos.x && s.y === facingPos.y
+  ) ?? adjacentSoil[0]
   const toRelease = monster.carryingNutrient - 1
 
   const newGrid = grid.map((row, y) =>
     row.map((cell, x) => {
       if (x === targetSoil.x && y === targetSoil.y) {
-        return { ...cell, nutrientAmount: Math.min(100, cell.nutrientAmount + toRelease) }
+        return { ...cell, nutrientAmount: Math.min(MAX_NUTRIENT_PER_CELL, cell.nutrientAmount + toRelease) }
       }
       return cell
     })
@@ -253,7 +261,7 @@ export function releaseNutrientsOnDeath(
       if (match) {
         const extra = remainder > 0 ? 1 : 0
         if (remainder > 0) remainder--
-        return { ...cell, nutrientAmount: Math.min(100, cell.nutrientAmount + perCell + extra) }
+        return { ...cell, nutrientAmount: Math.min(MAX_NUTRIENT_PER_CELL, cell.nutrientAmount + perCell + extra) }
       }
       return cell
     })

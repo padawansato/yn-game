@@ -5,14 +5,9 @@ import { calculateMove, MoveResult } from './movement'
 import { processPredation } from './predation'
 import { depleteOnDig, absorbNutrient, releaseNutrient, releaseNutrientsOnDeath } from './nutrient'
 
-let monsterIdCounter = 0
-
-export function generateMonsterId(): string {
-  return `monster-${++monsterIdCounter}`
-}
-
-export function resetMonsterIdCounter(): void {
-  monsterIdCounter = 0
+export function generateMonsterId(state: GameState): { id: string; nextMonsterId: number } {
+  const id = `monster-${state.nextMonsterId + 1}`
+  return { id, nextMonsterId: state.nextMonsterId + 1 }
 }
 
 function getMonsterTypeByNutrient(nutrientAmount: number): MonsterType {
@@ -381,8 +376,10 @@ export function dig(
   const config = MONSTER_CONFIGS[monsterType]
   const spawnedLife = Math.max(1, Math.min(availableNutrients, config.life))
 
+  const { id: monsterId, nextMonsterId } = generateMonsterId(state)
+
   const newMonster: Monster = {
-    id: generateMonsterId(),
+    id: monsterId,
     type: monsterType,
     position: { ...position },
     direction: (['up', 'down', 'left', 'right'] as const)[Math.floor(randomFn() * 4)],
@@ -403,6 +400,7 @@ export function dig(
       grid: newGrid,
       monsters: [...state.monsters, newMonster],
       digPower: state.digPower - 1,
+      nextMonsterId,
     },
     events,
   }
@@ -443,5 +441,6 @@ export function createGameState(width: number, height: number, soilRatio: number
     totalInitialNutrients: 0,
     digPower: INITIAL_DIG_POWER,
     gameTime: 0,
+    nextMonsterId: 0,
   }
 }

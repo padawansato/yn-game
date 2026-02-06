@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import type { Cell, GameState, Monster } from './types'
 import {
   calculateAllMoves,
@@ -8,7 +8,6 @@ import {
   tick,
   dig,
   isAdjacentToEmpty,
-  resetMonsterIdCounter,
   createGameState as createInitialGameState,
 } from './simulation'
 import { INITIAL_DIG_POWER } from './constants'
@@ -43,14 +42,12 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
     totalInitialNutrients: 100,
     digPower: 100,
     gameTime: 0,
+    nextMonsterId: 0,
     ...overrides,
   }
 }
 
 describe('Simulation', () => {
-  beforeEach(() => {
-    resetMonsterIdCounter()
-  })
 
   describe('calculateAllMoves', () => {
     it('should calculate moves for all monsters', () => {

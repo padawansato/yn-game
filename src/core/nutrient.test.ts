@@ -200,14 +200,14 @@ describe('Nutrient System', () => {
 
       const monster = createMonster({
         position: { x: 1, y: 1 },
+        direction: 'right',
         carryingNutrient: 5, // >= NUTRIENT_RELEASE_THRESHOLD (2)
       })
       const result = releaseNutrient(monster, grid)
 
       expect(result.monster.carryingNutrient).toBe(1) // keeps 1
-      // getAdjacentSoilCells returns in order: up, down, left, right
-      // So first adjacent soil is at (1, 0) = grid[0][1]
-      expect(result.grid[0][1].nutrientAmount).toBe(4) // released 4 (5-1)
+      // Facing direction is right, so release to (2, 1) = grid[1][2]
+      expect(result.grid[1][2].nutrientAmount).toBe(4) // released 4 (5-1)
     })
 
     it('should not release if below threshold', () => {
@@ -238,19 +238,20 @@ describe('Nutrient System', () => {
       expect(result.monster.carryingNutrient).toBe(5)
     })
 
-    it('should cap soil nutrients at 100', () => {
+    it('should cap soil nutrients at MAX_NUTRIENT_PER_CELL', () => {
       const grid = createGrid(3, 3, 'soil')
       grid[1][1].type = 'empty'
-      // First adjacent soil is at (1, 0) = grid[0][1] (up direction)
-      grid[0][1].nutrientAmount = 95 // already high
+      // Facing direction is right, so release to (2, 1) = grid[1][2]
+      grid[1][2].nutrientAmount = 95 // already high
 
       const monster = createMonster({
         position: { x: 1, y: 1 },
+        direction: 'right',
         carryingNutrient: 10,
       })
       const result = releaseNutrient(monster, grid)
 
-      expect(result.grid[0][1].nutrientAmount).toBe(100) // capped
+      expect(result.grid[1][2].nutrientAmount).toBe(100) // capped at MAX_NUTRIENT_PER_CELL
       expect(result.monster.carryingNutrient).toBe(1)
     })
   })

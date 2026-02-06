@@ -62,5 +62,8 @@ export const NUTRIENT_SPAWN_THRESHOLDS = {
   LIZARDMAN: 17,
 } as const
 
+// Maximum nutrient amount per cell
+export const MAX_NUTRIENT_PER_CELL = 100
+
 // Initial dig power
 export const INITIAL_DIG_POWER = 100
