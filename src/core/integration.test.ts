@@ -264,6 +264,79 @@ describe('Integration Tests', () => {
       expect(totalReleased).toBe(8)
     })
 
+    it('should continue ticking after all monsters die', () => {
+      const grid = createGrid(10, 10, 'empty')
+
+      const monster: Monster = {
+        id: 'm1',
+        type: 'nijirigoke',
+        position: { x: 5, y: 5 },
+        direction: 'right',
+        pattern: 'straight',
+        life: 1, // will die after 1 move
+        maxLife: 10,
+        attack: 0,
+        predationTargets: [],
+        carryingNutrient: 0,
+        nestPosition: null,
+      }
+
+      let state = createGameState({ grid, monsters: [monster] })
+
+      // First tick: monster moves and dies
+      const result1 = tick(state)
+      state = result1.state
+      expect(state.monsters).toHaveLength(0)
+
+      // Subsequent ticks should not crash with empty monster list
+      const result2 = tick(state)
+      state = result2.state
+      expect(state.monsters).toHaveLength(0)
+      expect(state.gameTime).toBe(2)
+
+      const result3 = tick(state)
+      state = result3.state
+      expect(state.gameTime).toBe(3)
+    })
+
+    it('should complete a full nutrient cycle: absorb, carry, release', () => {
+      // Nijirigoke absorbs from soil adjacent to its position after moving
+      const grid = createGrid(10, 10, 'soil')
+      // Create corridor of empty cells
+      grid[5][3].type = 'empty'
+      grid[5][4].type = 'empty'
+      grid[5][5].type = 'empty'
+      grid[5][6].type = 'empty'
+
+      // Put nutrients in soil next to where monster will move to
+      // Monster starts at (3,5), moves right to (4,5), absorbs from (5,5) which is empty
+      // so put nutrients in soil adjacent to (4,5): (4,4) is soil
+      grid[4][4].nutrientAmount = 8
+
+      const monster: Monster = {
+        id: 'm1',
+        type: 'nijirigoke',
+        position: { x: 3, y: 5 },
+        direction: 'right', // will move to (4,5)
+        pattern: 'straight',
+        life: 16,
+        maxLife: 16,
+        attack: 0,
+        predationTargets: [],
+        carryingNutrient: 0,
+        nestPosition: null,
+      }
+
+      let state = createGameState({ grid, monsters: [monster] })
+
+      // Tick 1: moves to (4,5), absorbs from adjacent soil
+      const result1 = tick(state)
+      state = result1.state
+      // Monster moved and absorbed from adjacent soil
+      expect(state.monsters[0].position).toEqual({ x: 4, y: 5 })
+      expect(state.monsters[0].carryingNutrient).toBeGreaterThan(0)
+    })
+
     it('should handle nutrient absorption and release cycle', () => {
       // Create a simple scenario for testing nutrient absorption/release
       const grid = createGrid(10, 10, 'soil')

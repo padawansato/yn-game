@@ -5,6 +5,7 @@ import {
   resolveConflicts,
   applyMovements,
   decreaseLifeForMoved,
+  processNutrientInteractions,
   tick,
   dig,
   isAdjacentToEmpty,
@@ -103,12 +104,16 @@ describe('Simulation', () => {
         },
       ]
 
+      // randomFn returns 0, so first monster wins
       const resolved = resolveConflicts(moves, () => 0)
 
       expect(resolved).toHaveLength(2)
-      // One should get target, other stays
-      const positions = resolved.map((r) => r.result.position)
-      expect(positions).toContainEqual({ x: 2, y: 2 })
+      // Winner gets target position
+      const winner = resolved.find((r) => r.monster.id === 'm1')!
+      expect(winner.result.position).toEqual({ x: 2, y: 2 })
+      // Loser returns to original position
+      const loser = resolved.find((r) => r.monster.id === 'm2')!
+      expect(loser.result.position).toEqual({ x: 3, y: 2 })
     })
 
     it('should preserve all monsters when 3+ target same position with predation', () => {
@@ -429,6 +434,87 @@ describe('Simulation', () => {
     })
   })
 
+  describe('processNutrientInteractions', () => {
+    it('should absorb nutrients from adjacent soil for nijirigoke', () => {
+      const grid = createGrid(10, 10, 'soil')
+      grid[2][2].type = 'empty' // monster position
+      grid[2][3].nutrientAmount = 5 // soil with nutrients (facing direction)
+
+      const monster = createMonster({
+        id: 'm1',
+        position: { x: 2, y: 2 },
+        direction: 'right',
+        carryingNutrient: 0,
+      })
+
+      const result = processNutrientInteractions([monster], grid)
+
+      expect(result.monsters[0].carryingNutrient).toBe(5)
+      expect(result.grid[2][3].nutrientAmount).toBe(0)
+      expect(result.events).toHaveLength(1)
+      expect(result.events[0].type).toBe('NUTRIENT_ABSORBED')
+    })
+
+    it('should release nutrients when carrying >= threshold and no absorption', () => {
+      const grid = createGrid(10, 10, 'soil')
+      grid[2][2].type = 'empty' // monster position
+      // All adjacent soil has 0 nutrients, so no absorption
+
+      const monster = createMonster({
+        id: 'm1',
+        position: { x: 2, y: 2 },
+        direction: 'right',
+        carryingNutrient: 5,
+      })
+
+      const result = processNutrientInteractions([monster], grid)
+
+      expect(result.monsters[0].carryingNutrient).toBe(1) // keeps 1
+      expect(result.events).toHaveLength(1)
+      expect(result.events[0].type).toBe('NUTRIENT_RELEASED')
+    })
+
+    it('should skip non-nijirigoke monsters', () => {
+      const grid = createGrid(10, 10, 'soil')
+      grid[2][2].type = 'empty'
+      grid[2][3].nutrientAmount = 5
+
+      const monster = createMonster({
+        id: 'm1',
+        type: 'gajigajimushi',
+        pattern: 'refraction',
+        position: { x: 2, y: 2 },
+        carryingNutrient: 0,
+      })
+
+      const result = processNutrientInteractions([monster], grid)
+
+      expect(result.monsters[0].carryingNutrient).toBe(0)
+      expect(result.grid[2][3].nutrientAmount).toBe(5)
+      expect(result.events).toHaveLength(0)
+    })
+
+    it('should prioritize absorption over release', () => {
+      const grid = createGrid(10, 10, 'soil')
+      grid[2][2].type = 'empty'
+      grid[2][3].nutrientAmount = 3 // facing direction has nutrients
+
+      const monster = createMonster({
+        id: 'm1',
+        position: { x: 2, y: 2 },
+        direction: 'right',
+        carryingNutrient: 5, // above release threshold
+      })
+
+      const result = processNutrientInteractions([monster], grid)
+
+      // Should absorb (not release), since absorption happens first
+      expect(result.monsters[0].carryingNutrient).toBe(8) // 5 + 3
+      expect(result.grid[2][3].nutrientAmount).toBe(0)
+      expect(result.events[0].type).toBe('NUTRIENT_ABSORBED')
+    })
+  })
+
   describe('isAdjacentToEmpty', () => {
     it('should return true if adjacent to empty cell', () => {
       const grid = createGrid(10, 10, 'soil')
@@ -520,7 +606,7 @@ describe('Simulation', () => {
 
     it('should spawn monster with life based on depleted nutrients', () => {
       const grid = createGrid(10, 10, 'soil')
-      grid[5][5].nutrientAmount = 9  // 9 * 0.7 = 6.3 -> life = 6
+      grid[5][5].nutrientAmount = 9  // 9 * 0.7 = 6.3 -> floor = 6
       grid[5][4].type = 'empty' // adjacent empty cell
       const state = createGameState({ grid })
 
@@ -528,8 +614,9 @@ describe('Simulation', () => {
 
       expect('error' in result).toBe(false)
       if (!('error' in result)) {
-        // Nijirigoke maxLife is 10, life = min(availableNutrients, maxLife)
-        expect(result.state.monsters[0].life).toBeLessThanOrEqual(10)
+        // depleteOnDig(9) = floor(9 * 0.7) = 6
+        // life = max(1, min(6, 16)) = 6 (nijirigoke maxLife is 16)
+        expect(result.state.monsters[0].life).toBe(6)
         expect(result.state.monsters[0].carryingNutrient).toBe(0)
       }
     })
