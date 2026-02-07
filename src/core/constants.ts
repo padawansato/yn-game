@@ -44,7 +44,7 @@ export const NUTRIENT_DEPLETION_RATIO = 0.3
 export const NUTRIENT_CARRY_CAPACITY = 10
 
 // Threshold for Nijirigoke to release nutrients (release when >= this amount)
-export const NUTRIENT_RELEASE_THRESHOLD = 2
+export const NUTRIENT_RELEASE_THRESHOLD = 4
 
 // Hunger threshold (30% of maxLife)
 export const HUNGER_THRESHOLD_RATIO = 0.3
@@ -61,6 +61,9 @@ export const NUTRIENT_SPAWN_THRESHOLDS = {
   GAJIGAJIMUSHI: 10,
   LIZARDMAN: 17,
 } as const
+
+// Maximum nutrient amount per cell
+export const MAX_NUTRIENT_PER_CELL = 100
 
 // Initial dig power
 export const INITIAL_DIG_POWER = 100

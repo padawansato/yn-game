@@ -1,23 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { GameLoop } from './game-loop'
-import type { Cell, GameState } from './types'
-
-function createGrid(width: number, height: number, type: Cell['type'] = 'empty'): Cell[][] {
-  return Array.from({ length: height }, () =>
-    Array.from({ length: width }, () => ({ type, nutrientAmount: 0 }))
-  )
-}
-
-function createGameState(overrides: Partial<GameState> = {}): GameState {
-  return {
-    grid: createGrid(5, 5),
-    monsters: [],
-    totalInitialNutrients: 100,
-    digPower: 100,
-    gameTime: 0,
-    ...overrides,
-  }
-}
 
 describe('GameLoop', () => {
   beforeEach(() => {
@@ -30,9 +12,8 @@ describe('GameLoop', () => {
 
   describe('start and stop', () => {
     it('should call onTick at configured interval when started', () => {
-      const state = createGameState()
-      const onTick = vi.fn((s: GameState) => s)
-      const loop = new GameLoop(state, onTick, 500)
+      const onTick = vi.fn()
+      const loop = new GameLoop(onTick, 500)
 
       loop.start()
       expect(onTick).not.toHaveBeenCalled()
@@ -47,9 +28,8 @@ describe('GameLoop', () => {
     })
 
     it('should stop calling onTick when stopped', () => {
-      const state = createGameState()
-      const onTick = vi.fn((s: GameState) => s)
-      const loop = new GameLoop(state, onTick, 500)
+      const onTick = vi.fn()
+      const loop = new GameLoop(onTick, 500)
 
       loop.start()
       vi.advanceTimersByTime(500)
@@ -61,9 +41,8 @@ describe('GameLoop', () => {
     })
 
     it('should report running state correctly', () => {
-      const state = createGameState()
-      const onTick = vi.fn((s: GameState) => s)
-      const loop = new GameLoop(state, onTick, 500)
+      const onTick = vi.fn()
+      const loop = new GameLoop(onTick, 500)
 
       expect(loop.isRunning()).toBe(false)
 
@@ -77,9 +56,8 @@ describe('GameLoop', () => {
 
   describe('pause and resume', () => {
     it('should pause tick execution', () => {
-      const state = createGameState()
-      const onTick = vi.fn((s: GameState) => s)
-      const loop = new GameLoop(state, onTick, 500)
+      const onTick = vi.fn()
+      const loop = new GameLoop(onTick, 500)
 
       loop.start()
       vi.advanceTimersByTime(500)
@@ -91,9 +69,8 @@ describe('GameLoop', () => {
     })
 
     it('should resume tick execution after pause', () => {
-      const state = createGameState()
-      const onTick = vi.fn((s: GameState) => s)
-      const loop = new GameLoop(state, onTick, 500)
+      const onTick = vi.fn()
+      const loop = new GameLoop(onTick, 500)
 
       loop.start()
       vi.advanceTimersByTime(500)
@@ -109,9 +86,8 @@ describe('GameLoop', () => {
     })
 
     it('should report paused state correctly', () => {
-      const state = createGameState()
-      const onTick = vi.fn((s: GameState) => s)
-      const loop = new GameLoop(state, onTick, 500)
+      const onTick = vi.fn()
+      const loop = new GameLoop(onTick, 500)
 
       loop.start()
       expect(loop.isPaused()).toBe(false)
@@ -124,35 +100,35 @@ describe('GameLoop', () => {
     })
   })
 
-  describe('gameTime tracking', () => {
-    it('should increment gameTime on each tick', () => {
-      const state = createGameState({ gameTime: 0 })
-      const loop = new GameLoop(state, (s) => ({ ...s, gameTime: s.gameTime + 1 }), 500)
+  describe('gameTime tracking via external state', () => {
+    it('should allow external state management via callback', () => {
+      let gameTime = 0
+      const loop = new GameLoop(() => { gameTime++ }, 500)
 
       loop.start()
       vi.advanceTimersByTime(500)
-      expect(loop.getState().gameTime).toBe(1)
+      expect(gameTime).toBe(1)
 
       vi.advanceTimersByTime(500)
-      expect(loop.getState().gameTime).toBe(2)
+      expect(gameTime).toBe(2)
 
       vi.advanceTimersByTime(500)
-      expect(loop.getState().gameTime).toBe(3)
+      expect(gameTime).toBe(3)
 
       loop.stop()
     })
 
-    it('should preserve gameTime when paused', () => {
-      const state = createGameState({ gameTime: 0 })
-      const loop = new GameLoop(state, (s) => ({ ...s, gameTime: s.gameTime + 1 }), 500)
+    it('should preserve external state when paused', () => {
+      let gameTime = 0
+      const loop = new GameLoop(() => { gameTime++ }, 500)
 
       loop.start()
       vi.advanceTimersByTime(1000) // 2 ticks
-      expect(loop.getState().gameTime).toBe(2)
+      expect(gameTime).toBe(2)
 
       loop.pause()
       vi.advanceTimersByTime(2000)
-      expect(loop.getState().gameTime).toBe(2) // unchanged
+      expect(gameTime).toBe(2) // unchanged
 
       loop.stop()
     })
@@ -160,9 +136,8 @@ describe('GameLoop', () => {
 
   describe('custom tick interval', () => {
     it('should use default interval of 500ms', () => {
-      const state = createGameState()
-      const onTick = vi.fn((s: GameState) => s)
-      const loop = new GameLoop(state, onTick)
+      const onTick = vi.fn()
+      const loop = new GameLoop(onTick)
 
       loop.start()
 
@@ -176,9 +151,8 @@ describe('GameLoop', () => {
     })
 
     it('should allow custom tick interval', () => {
-      const state = createGameState()
-      const onTick = vi.fn((s: GameState) => s)
-      const loop = new GameLoop(state, onTick, 1000)
+      const onTick = vi.fn()
+      const loop = new GameLoop(onTick, 1000)
 
       loop.start()
 

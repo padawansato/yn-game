@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
 import {
+  createGameState,
   initializeNutrients,
   tick,
   dig,
@@ -14,43 +15,18 @@ import {
 
 // Initialize game
 function createInitialState(): GameState {
-  const width = 10
-  const height = 8
-
-  // Calculate entry point position (top center, one row below the wall)
-  const entryX = Math.floor(width / 2)
-  const entryY = 1
-
-  // Create grid with walls on borders
-  const grid: Cell[][] = []
-  for (let y = 0; y < height; y++) {
-    const row: Cell[] = []
-    for (let x = 0; x < width; x++) {
-      if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
-        row.push({ type: 'wall', nutrientAmount: 0 })
-      } else if (x === entryX && y === entryY) {
-        // Entry point - initial empty cell for digging
-        row.push({ type: 'empty', nutrientAmount: 0 })
-      } else {
-        row.push({ type: 'soil', nutrientAmount: 0 })
-      }
-    }
-    grid.push(row)
-  }
-
-  // Initialize nutrients
-  const { grid: initializedGrid } = initializeNutrients(grid, 200)
+  const state = createGameState(10, 8, 1.0)
+  const totalNutrients = 200
+  const { grid } = initializeNutrients(state.grid, totalNutrients)
 
   // テスト用: エントリーポイント近くに高養分土を配置
-  initializedGrid[2][6].nutrientAmount = 20 // リザードマン用 (17以上)
-  initializedGrid[3][4].nutrientAmount = 12 // ガジガジムシ用 (10-16)
+  grid[2][6].nutrientAmount = 20 // リザードマン用 (17以上)
+  grid[3][4].nutrientAmount = 12 // ガジガジムシ用 (10-16)
 
   return {
-    grid: initializedGrid,
-    monsters: [],
-    totalInitialNutrients: 200,
-    digPower: 100,
-    gameTime: 0,
+    ...state,
+    grid,
+    totalInitialNutrients: totalNutrients,
   }
 }
 
@@ -60,21 +36,19 @@ const isRunning = ref(false)
 const isPaused = ref(false)
 
 // Game Loop
-function executeTickWithEvents(state: GameState): GameState {
-  const result = tick(state)
+function executeTickWithEvents() {
+  const result = tick(gameState.value)
   result.events.forEach((e) => {
     events.value.unshift(`[${e.type}] ${formatEvent(e)}`)
   })
-  return { ...result.state, gameTime: state.gameTime + 1 }
+  gameState.value = result.state
 }
 
 let gameLoop: GameLoop | null = null
 
 function initGameLoop() {
-  gameLoop = new GameLoop(gameState.value, (state) => {
-    const newState = executeTickWithEvents(state)
-    gameState.value = newState
-    return newState
+  gameLoop = new GameLoop(() => {
+    executeTickWithEvents()
   }, 500)
 }
 
@@ -98,7 +72,7 @@ function handleCellClick(x: number, y: number) {
 }
 
 function handleTick() {
-  gameState.value = executeTickWithEvents(gameState.value)
+  executeTickWithEvents()
 }
 
 function startGame() {

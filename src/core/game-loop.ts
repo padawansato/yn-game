@@ -1,16 +1,12 @@
-import type { GameState } from './types'
-
-export type TickCallback = (state: GameState) => GameState
+export type TickCallback = () => void
 
 export class GameLoop {
-  private state: GameState
   private onTick: TickCallback
   private tickInterval: number
   private intervalId: ReturnType<typeof setInterval> | null = null
   private paused: boolean = false
 
-  constructor(state: GameState, onTick: TickCallback, tickInterval: number = 500) {
-    this.state = state
+  constructor(onTick: TickCallback, tickInterval: number = 500) {
     this.onTick = onTick
     this.tickInterval = tickInterval
   }
@@ -21,7 +17,7 @@ export class GameLoop {
     this.paused = false
     this.intervalId = setInterval(() => {
       if (!this.paused) {
-        this.state = this.onTick(this.state)
+        this.onTick()
       }
     }, this.tickInterval)
   }
@@ -48,9 +44,5 @@ export class GameLoop {
 
   isPaused(): boolean {
     return this.paused
-  }
-
-  getState(): GameState {
-    return this.state
   }
 }

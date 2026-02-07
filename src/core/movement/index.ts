@@ -1,20 +1,15 @@
 import type { Cell, Direction, Monster, Position } from '../types'
-import { HUNGER_THRESHOLD_RATIO } from '../constants'
 import { calculateStraightMove, getForwardPosition, isValidMove } from './straight'
 import { calculateRefractionMove } from './refraction'
 import { calculateStationaryMove } from './stationary'
+import { isHungry } from './hunger'
+
+export { isHungry } from './hunger'
 
 export interface MoveResult {
   position: Position
   direction: Direction
   nestPosition: Position | null
-}
-
-/**
- * Check if monster is hungry
- */
-export function isHungry(monster: Monster): boolean {
-  return monster.life < monster.maxLife * HUNGER_THRESHOLD_RATIO
 }
 
 /**

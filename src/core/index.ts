@@ -21,6 +21,7 @@ export {
   MOVEMENT_LIFE_COST,
   DEFAULT_GRID_WIDTH,
   DEFAULT_GRID_HEIGHT,
+  MAX_NUTRIENT_PER_CELL,
 } from './constants'
 export type { MonsterConfig } from './constants'
 
@@ -73,7 +74,6 @@ export {
   processNutrientInteractions,
   createGameState,
   generateMonsterId,
-  resetMonsterIdCounter,
 } from './simulation'
 
 // Game Loop

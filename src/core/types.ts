@@ -44,6 +44,7 @@ export interface GameState {
   totalInitialNutrients: number
   digPower: number
   gameTime: number
+  nextMonsterId: number
 }
 
 // Game events
