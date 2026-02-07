@@ -44,7 +44,7 @@ export const NUTRIENT_DEPLETION_RATIO = 0.3
 export const NUTRIENT_CARRY_CAPACITY = 10
 
 // Threshold for Nijirigoke to release nutrients (release when >= this amount)
-export const NUTRIENT_RELEASE_THRESHOLD = 2
+export const NUTRIENT_RELEASE_THRESHOLD = 4
 
 // Hunger threshold (30% of maxLife)
 export const HUNGER_THRESHOLD_RATIO = 0.3

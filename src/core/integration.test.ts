@@ -337,6 +337,48 @@ describe('Integration Tests', () => {
       expect(state.monsters[0].carryingNutrient).toBeGreaterThan(0)
     })
 
+    it('should keep nijirigoke alive when adjacent nutrients are available', () => {
+      // Nijirigoke with maxLife and carrying nutrients should survive much longer
+      const grid = createGrid(10, 10, 'soil')
+      grid[5][3].type = 'empty'
+      grid[5][4].type = 'empty'
+      grid[5][5].type = 'empty'
+      grid[5][6].type = 'empty'
+      grid[5][7].type = 'empty'
+
+      // Rich soil adjacent to corridor
+      grid[4][4].nutrientAmount = 10
+      grid[4][5].nutrientAmount = 10
+      grid[4][6].nutrientAmount = 10
+
+      const monster: Monster = {
+        id: 'm1',
+        type: 'nijirigoke',
+        position: { x: 3, y: 5 },
+        direction: 'right',
+        pattern: 'straight',
+        life: 16,
+        maxLife: 16,
+        attack: 0,
+        predationTargets: [],
+        carryingNutrient: 3, // starts with some nutrients
+        nestPosition: null,
+      }
+
+      let state = createGameState({ grid, monsters: [monster] })
+
+      // Run 10 ticks - nijirigoke should survive due to nutrient absorption
+      for (let i = 0; i < 10; i++) {
+        const result = tick(state)
+        state = result.state
+        if (state.monsters.length === 0) break
+      }
+
+      // Should still be alive after 10 ticks with nutrient support
+      expect(state.monsters).toHaveLength(1)
+      expect(state.monsters[0].life).toBe(16) // life preserved by nutrient fuel
+    })
+
     it('should handle nutrient absorption and release cycle', () => {
       // Create a simple scenario for testing nutrient absorption/release
       const grid = createGrid(10, 10, 'soil')
@@ -365,7 +407,8 @@ describe('Integration Tests', () => {
       state = result.state
 
       expect(state.monsters[0].position).toEqual({ x: 6, y: 5 })
-      expect(state.monsters[0].carryingNutrient).toBe(10)
+      // Absorbed 10, then movement cost -1 = 9
+      expect(state.monsters[0].carryingNutrient).toBe(9)
       expect(state.grid[5][7].nutrientAmount).toBe(0)
     })
   })

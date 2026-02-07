@@ -1,4 +1,4 @@
-import { NUTRIENT_SPAWN_THRESHOLDS, INITIAL_DIG_POWER } from './constants'
+import { NUTRIENT_SPAWN_THRESHOLDS, INITIAL_DIG_POWER, NUTRIENT_CARRY_CAPACITY } from './constants'
 import type { Cell, GameEvent, GameState, Monster, MonsterType, Position } from './types'
 import { MOVEMENT_LIFE_COST, MONSTER_CONFIGS } from './constants'
 import { calculateMove, MoveResult } from './movement'
@@ -259,23 +259,23 @@ export function tick(
   const predationResult = processPredation(moveResult.monsters, state.grid)
   allEvents.push(...predationResult.events)
 
-  // 5. Decrease life for moved monsters (and release nutrients on death)
+  // 5. Process nutrient absorption/release for Nijirigoke (before life decrease)
+  const nutrientResult = processNutrientInteractions(predationResult.monsters, predationResult.grid)
+  allEvents.push(...nutrientResult.events)
+
+  // 6. Decrease life for moved monsters (and release nutrients on death)
   const lifeResult = decreaseLifeForMoved(
-    predationResult.monsters,
+    nutrientResult.monsters,
     originalPositions,
-    predationResult.grid
+    nutrientResult.grid
   )
   allEvents.push(...lifeResult.events)
-
-  // 6. Process nutrient absorption/release for Nijirigoke
-  const nutrientResult = processNutrientInteractions(lifeResult.monsters, lifeResult.grid)
-  allEvents.push(...nutrientResult.events)
 
   return {
     state: {
       ...state,
-      grid: nutrientResult.grid,
-      monsters: nutrientResult.monsters,
+      grid: lifeResult.grid,
+      monsters: lifeResult.monsters,
       gameTime: state.gameTime + 1,
     },
     events: allEvents,
@@ -374,8 +374,6 @@ export function dig(
   // Spawn Nijirigoke with life based on nutrients
   const monsterType = getMonsterTypeByNutrient(cell.nutrientAmount)
   const config = MONSTER_CONFIGS[monsterType]
-  const spawnedLife = Math.max(1, Math.min(availableNutrients, config.life))
-
   const { id: monsterId, nextMonsterId } = generateMonsterId(state)
 
   const newMonster: Monster = {
@@ -384,11 +382,13 @@ export function dig(
     position: { ...position },
     direction: (['up', 'down', 'left', 'right'] as const)[Math.floor(randomFn() * 4)],
     pattern: config.pattern,
-    life: spawnedLife,
+    life: config.life,
     maxLife: config.life,
     attack: config.attack,
     predationTargets: [...config.predationTargets],
-    carryingNutrient: 0, // Starts with no nutrients
+    carryingNutrient: config.canCarryNutrients
+      ? Math.min(availableNutrients, NUTRIENT_CARRY_CAPACITY)
+      : 0,
     nestPosition: null,
   }
 
@@ -424,7 +424,6 @@ export function createGameState(width: number, height: number, soilRatio: number
       if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
         row.push({ type: 'wall', nutrientAmount: 0 })
       } else if (x === entryX && y === entryY) {
-        // Entry point - initial empty cell for digging
         row.push({ type: 'empty', nutrientAmount: 0 })
       } else if (Math.random() < soilRatio) {
         row.push({ type: 'soil', nutrientAmount: 0 })

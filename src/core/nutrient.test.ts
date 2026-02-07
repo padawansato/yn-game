@@ -201,7 +201,7 @@ describe('Nutrient System', () => {
       const monster = createMonster({
         position: { x: 1, y: 1 },
         direction: 'right',
-        carryingNutrient: 5, // >= NUTRIENT_RELEASE_THRESHOLD (2)
+        carryingNutrient: 5, // >= NUTRIENT_RELEASE_THRESHOLD (4)
       })
       const result = releaseNutrient(monster, grid)
 
@@ -216,11 +216,40 @@ describe('Nutrient System', () => {
 
       const monster = createMonster({
         position: { x: 1, y: 1 },
-        carryingNutrient: 1, // < NUTRIENT_RELEASE_THRESHOLD (2)
+        carryingNutrient: 1, // < NUTRIENT_RELEASE_THRESHOLD (4)
       })
       const result = releaseNutrient(monster, grid)
 
       expect(result.monster.carryingNutrient).toBe(1)
+    })
+
+    it('should not release when carrying exactly 3 (below threshold of 4)', () => {
+      const grid = createGrid(3, 3, 'soil')
+      grid[1][1].type = 'empty'
+
+      const monster = createMonster({
+        position: { x: 1, y: 1 },
+        direction: 'right',
+        carryingNutrient: 3,
+      })
+      const result = releaseNutrient(monster, grid)
+
+      expect(result.monster.carryingNutrient).toBe(3) // no release
+    })
+
+    it('should release when carrying exactly 4 (at threshold)', () => {
+      const grid = createGrid(3, 3, 'soil')
+      grid[1][1].type = 'empty'
+
+      const monster = createMonster({
+        position: { x: 1, y: 1 },
+        direction: 'right',
+        carryingNutrient: 4,
+      })
+      const result = releaseNutrient(monster, grid)
+
+      expect(result.monster.carryingNutrient).toBe(1) // released 3, keeps 1
+      expect(result.grid[1][2].nutrientAmount).toBe(3)
     })
 
     it('should not release for non-nijirigoke', () => {
