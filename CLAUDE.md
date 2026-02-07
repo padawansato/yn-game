@@ -52,9 +52,60 @@ src/
 
 ## Git（GitHub Flow）
 
-### ブランチ構成
-- `main` - 常にデプロイ可能な状態
-- `feature/<name>` - 機能開発用
+### ブランチ命名規則
+
+```
+[feature|fix|spec]/<feature-name>
+```
+
+| プレフィックス | 用途 |
+|---------------|------|
+| `feature/` | 機能開発全般（テスト・リファクタリング含む） |
+| `fix/` | バグ修正 |
+| `spec/` | 実装を含まない仕様書・提案書の作成 |
+
+例:
+```bash
+feature/food-chain-system
+fix/nijirigoke-early-death
+spec/nutrient-cycle-proposal
+```
+
+### Git Worktree 運用
+
+#### worktree ディレクトリ命名
+
+メインリポジトリ名をプレフィックスにし、機能名をサフィックスにする。
+`ls` や Tab 補完で関連ディレクトリがまとまって表示される。
+
+```
+yn-game/                        # main（メインのリポジトリ）
+yn-game-food-chain/             # 食物連鎖機能
+yn-game-nijirigoke-fix/         # ニジリゴケ修正
+yn-game-review/                 # コードレビュー用（一時的）
+```
+
+#### worktree 配置場所
+
+メインリポジトリと同じ親ディレクトリに配置する。
+
+```bash
+# 作成
+git worktree add ../yn-game-<feature-name> <branch>
+
+# 一覧確認
+git worktree list
+
+# 削除（作業完了後）
+git worktree remove ../yn-game-<feature-name>
+```
+
+#### 運用ルール
+
+- **1 worktree = 1 ブランチ**: 同じブランチを複数の worktree で開かない
+- **レビュー用 worktree**: PR レビュー時に `yn-game-review` として作成し、完了後に削除
+- **作業完了後は必ず削除**: `git worktree remove` で片付ける
+- **Docker**: 各 worktree で独立して `docker compose up` 可能（ポート競合に注意）
 
 ### ワークフロー
 1. `main` から `feature/<name>` を作成
