@@ -161,6 +161,18 @@ openspec/
 - **archive**: 通常はこれだけでOK（sync + アーカイブを一括実行）
 - **sync**: changesに残したままmain specsだけ更新したい場合
 
+### verify後のルール（重要）
+
+verifyで不一致が見つかった場合、各不一致に対して**必ず以下のどちらかを選択**する:
+
+1. **実装を修正する** → tasksに追加して実装。再verifyしてからarchive
+2. **specに`(FUTURE)`マークする** → 今は実装しないことを明示
+
+**禁止**: specに現在形の要件（SHALL）として書いたものを実装せずにarchiveすること。
+specの要件 = 実装済みの事実。未実装のものは必ず`(FUTURE)`をつける。
+
+verify → spec変更 → **tasks更新を忘れずに** → 実装 → 再verify → archive
+
 ### コミットタイミング
 1. **アーティファクト作成時** - proposal/spec/design/tasks作成後
 2. **実装中** - 数タスク完了ごと（tasks.md更新と同期）

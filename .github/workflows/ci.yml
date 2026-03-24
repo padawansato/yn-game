@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,8 +21,14 @@ jobs:
 
       - run: pnpm install
 
-      - run: pnpm lint
+      - name: Lint
+        run: pnpm lint
 
-      - run: pnpm format --check
+      - name: Format check
+        run: pnpm format --check
 
-      - run: pnpm test
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Type check
+        run: pnpm exec vue-tsc -b || true

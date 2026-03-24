@@ -16,14 +16,7 @@ import {
   MONSTER_CONFIGS,
 } from './core/constants'
 
-// === 固定乱数 (seedable PRNG) ===
-function createSeededRandom(seed: number): () => number {
-  let s = seed
-  return () => {
-    s = (s * 1664525 + 1013904223) & 0xffffffff
-    return (s >>> 0) / 0x100000000
-  }
-}
+import { createSeededRandom } from './core/random'
 
 // === グリッド作成ヘルパー ===
 function createGrid(width: number, height: number): Cell[][] {
