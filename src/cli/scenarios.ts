@@ -4,7 +4,6 @@ import {
   LAYING_LIFE_THRESHOLD,
   LAYING_NUTRIENT_THRESHOLD,
   BUD_LIFE_THRESHOLD,
-  BUD_NUTRIENT_THRESHOLD,
   PUPA_NUTRIENT_THRESHOLD,
 } from '../core/constants'
 import { getTotalNutrients } from '../core/nutrient'
