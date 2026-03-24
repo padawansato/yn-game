@@ -9,6 +9,7 @@ import {
   GameLoop,
   createSeededRandom,
   LAYING_NUTRIENT_THRESHOLD,
+  getNestCells,
   LAYING_LIFE_THRESHOLD,
   PUPA_NUTRIENT_THRESHOLD,
   BUD_NUTRIENT_THRESHOLD,
@@ -382,12 +383,31 @@ function getCellDisplay(cell: Cell, x: number, y: number): string {
   }
 }
 
+// 巣エリアのセル座標セット
+const nestCellSet = computed(() => {
+  const set = new Set<string>()
+  for (const m of gameState.value.monsters) {
+    if (m.type === 'lizardman' && m.nestPosition && m.nestOrientation) {
+      const cells = getNestCells(m.nestPosition, m.nestOrientation)
+      for (const c of cells) {
+        set.add(`${c.x},${c.y}`)
+      }
+    }
+  }
+  return set
+})
+
 function getCellClass(cell: Cell, x: number, y: number): string {
   const monsters = getMonstersAtCell(x, y)
   const topMonster = getTopMonster(monsters)
+  const isNest = nestCellSet.value.has(`${x},${y}`)
 
   if (topMonster) {
-    return `cell monster-${topMonster.type}`
+    return `cell monster-${topMonster.type}${isNest ? ' nest-cell' : ''}`
+  }
+
+  if (isNest) {
+    return `cell cell-${cell.type} nest-cell`
   }
 
   return `cell cell-${cell.type}`
@@ -549,6 +569,7 @@ function getNutrientLevel(amount: number): 'low' | 'mid' | 'high' | null {
       <span class="legend-item"><span class="cell monster-nijirigoke">苔</span> ニジリゴケ</span>
       <span class="legend-item"><span class="cell monster-gajigajimushi">虫</span> ガジガジムシ</span>
       <span class="legend-item"><span class="cell monster-lizardman">蜥</span> リザードマン</span>
+      <span class="legend-item"><span class="cell cell-empty nest-cell" /> 巣</span>
     </div>
 
     <div class="legend nutrient-legend">
@@ -796,6 +817,16 @@ h1 {
 .monster-lizardman {
   background: #4d1a1a;
   color: #ef5350;
+}
+
+.nest-cell {
+  outline: 2px solid #ef5350;
+  outline-offset: -2px;
+  background-color: #2a1515 !important;
+}
+
+.cell-empty.nest-cell {
+  background-color: #2a1515 !important;
 }
 
 .legend {

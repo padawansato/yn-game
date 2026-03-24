@@ -174,4 +174,4 @@ export function calculateMove(
 export { getForwardPosition, isValidMove, getTurnDirections } from './straight'
 export { calculateStraightMove } from './straight'
 export { calculateRefractionMove } from './refraction'
-export { calculateStationaryMove } from './stationary'
+export { calculateStationaryMove, getNestCells } from './stationary'

@@ -68,6 +68,7 @@ export {
   calculateStraightMove,
   calculateRefractionMove,
   calculateStationaryMove,
+  getNestCells,
 } from './movement'
 export type { MoveResult } from './movement'
 
