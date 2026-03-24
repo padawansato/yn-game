@@ -133,21 +133,22 @@ const scenarios: Scenario[] = [
   },
   {
     name: 'nijirigoke-metamorphosis',
-    description: 'Nijirigoke near bud threshold with surrounding nutrients → bud → flower → withered',
+    description: 'Nijirigoke moves, absorbs nutrients, then bud → flower → withered → reproduction',
     setup() {
       const grid = makeEmptyArena(12, 10)
-      // Place nutrients around the monster for bud absorption
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          grid[4 + dy][5 + dx].nutrientAmount = 5
-        }
+      // Create a corridor with nutrient-rich soil on the sides
+      // Empty corridor for movement: y=4, x=2..9
+      // Soil walls with nutrients on y=3 and y=5
+      for (let x = 2; x <= 9; x++) {
+        grid[3][x] = { type: 'soil', nutrientAmount: 6, magicAmount: 0 }
+        grid[5][x] = { type: 'soil', nutrientAmount: 6, magicAmount: 0 }
       }
       return makeState(grid, [
         {
           type: 'nijirigoke',
-          position: { x: 5, y: 4 },
-          life: BUD_LIFE_THRESHOLD,
-          carryingNutrient: BUD_NUTRIENT_THRESHOLD,
+          position: { x: 3, y: 4 },
+          life: BUD_LIFE_THRESHOLD, // life=8, already at bud threshold
+          carryingNutrient: 3, // absorbs from soil to reach BUD_NUTRIENT_THRESHOLD(6)
           phase: 'mobile',
         },
       ])
