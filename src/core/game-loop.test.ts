@@ -103,7 +103,9 @@ describe('GameLoop', () => {
   describe('gameTime tracking via external state', () => {
     it('should allow external state management via callback', () => {
       let gameTime = 0
-      const loop = new GameLoop(() => { gameTime++ }, 500)
+      const loop = new GameLoop(() => {
+        gameTime++
+      }, 500)
 
       loop.start()
       vi.advanceTimersByTime(500)
@@ -120,7 +122,9 @@ describe('GameLoop', () => {
 
     it('should preserve external state when paused', () => {
       let gameTime = 0
-      const loop = new GameLoop(() => { gameTime++ }, 500)
+      const loop = new GameLoop(() => {
+        gameTime++
+      }, 500)
 
       loop.start()
       vi.advanceTimersByTime(1000) // 2 ticks

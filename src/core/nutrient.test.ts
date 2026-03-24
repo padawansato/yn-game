@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import type { Cell, GameState, Monster } from './types'
 import {
   initializeNutrients,
-  depleteOnDig,
   getTotalNutrients,
   isWorldDying,
   exponentialRandom,
@@ -14,7 +13,7 @@ import {
 
 function createGrid(width: number, height: number, type: Cell['type'] = 'soil'): Cell[][] {
   return Array.from({ length: height }, () =>
-    Array.from({ length: width }, () => ({ type, nutrientAmount: 0 }))
+    Array.from({ length: width }, () => ({ type, nutrientAmount: 0, magicAmount: 0 }))
   )
 }
 
@@ -25,12 +24,15 @@ function createMonster(overrides: Partial<Monster> = {}): Monster {
     position: { x: 1, y: 1 },
     direction: 'right',
     pattern: 'straight',
+    phase: 'mobile' as const,
+    phaseTickCounter: 0,
     life: 10,
     maxLife: 10,
     attack: 0,
     predationTargets: [],
     carryingNutrient: 0,
     nestPosition: null,
+    nestOrientation: null,
     ...overrides,
   }
 }
@@ -76,23 +78,6 @@ describe('Nutrient System', () => {
       expect(newGrid[1][1].nutrientAmount).toBe(0) // empty
       // Two soil cells should share 20 nutrients
       expect(newGrid[0][1].nutrientAmount + newGrid[1][0].nutrientAmount).toBe(20)
-    })
-  })
-
-  describe('depleteOnDig', () => {
-    it('should lose 30% of nutrients when digging', () => {
-      const available = depleteOnDig(100)
-      expect(available).toBe(70)
-    })
-
-    it('should floor the result', () => {
-      const available = depleteOnDig(10)
-      expect(available).toBe(7)
-    })
-
-    it('should return 0 for 0 nutrients', () => {
-      const available = depleteOnDig(0)
-      expect(available).toBe(0)
     })
   })
 
@@ -267,7 +252,7 @@ describe('Nutrient System', () => {
       expect(result.monster.carryingNutrient).toBe(5)
     })
 
-    it('should cap soil nutrients at MAX_NUTRIENT_PER_CELL', () => {
+    it('should allow nutrients above MAX_NUTRIENT_PER_CELL (conservation law priority)', () => {
       const grid = createGrid(3, 3, 'soil')
       grid[1][1].type = 'empty'
       // Facing direction is right, so release to (2, 1) = grid[1][2]
@@ -280,45 +265,49 @@ describe('Nutrient System', () => {
       })
       const result = releaseNutrient(monster, grid)
 
-      expect(result.grid[1][2].nutrientAmount).toBe(100) // capped at MAX_NUTRIENT_PER_CELL
+      // Conservation law: 95 + 9 = 104 (no cap, nutrients preserved)
+      expect(result.grid[1][2].nutrientAmount).toBe(104)
       expect(result.monster.carryingNutrient).toBe(1)
     })
   })
 
   describe('releaseNutrientsOnDeath', () => {
-    it('should distribute nutrients to adjacent soil cells', () => {
+    it('should distribute nutrients to surrounding 9 cells (soil and empty)', () => {
       const grid = createGrid(3, 3, 'soil')
-      grid[1][1].type = 'empty'
+      grid[1][1].type = 'empty' // center where monster dies
 
       const monster = createMonster({
         position: { x: 1, y: 1 },
-        carryingNutrient: 8,
+        carryingNutrient: 9,
       })
       const newGrid = releaseNutrientsOnDeath(monster, grid)
 
-      // 8 nutrients distributed among 4 adjacent cells = 2 each
-      expect(newGrid[0][1].nutrientAmount).toBe(2) // up
-      expect(newGrid[2][1].nutrientAmount).toBe(2) // down
-      expect(newGrid[1][0].nutrientAmount).toBe(2) // left
-      expect(newGrid[1][2].nutrientAmount).toBe(2) // right
+      // 9 nutrients distributed among 9 cells (8 soil + 1 empty center) = 1 each
+      let total = 0
+      for (const row of newGrid) {
+        for (const cell of row) {
+          total += cell.nutrientAmount
+        }
+      }
+      expect(total).toBe(9)
     })
 
-    it('should handle remainder distribution', () => {
+    it('should handle remainder distribution across 9 cells', () => {
       const grid = createGrid(3, 3, 'soil')
       grid[1][1].type = 'empty'
 
       const monster = createMonster({
         position: { x: 1, y: 1 },
-        carryingNutrient: 5, // 5 / 4 = 1 with remainder 1
+        carryingNutrient: 5, // 5 / 9 = 0 with remainder 5
       })
       const newGrid = releaseNutrientsOnDeath(monster, grid)
 
       let total = 0
-      total += newGrid[0][1].nutrientAmount
-      total += newGrid[2][1].nutrientAmount
-      total += newGrid[1][0].nutrientAmount
-      total += newGrid[1][2].nutrientAmount
-
+      for (const row of newGrid) {
+        for (const cell of row) {
+          total += cell.nutrientAmount
+        }
+      }
       expect(total).toBe(5)
     })
 
@@ -335,7 +324,7 @@ describe('Nutrient System', () => {
       expect(newGrid).toBe(grid) // same reference
     })
 
-    it('should lose nutrients if no adjacent soil', () => {
+    it('should distribute to empty cells (conservation law)', () => {
       const grid = createGrid(3, 3, 'empty')
 
       const monster = createMonster({
@@ -344,14 +333,30 @@ describe('Nutrient System', () => {
       })
       const newGrid = releaseNutrientsOnDeath(monster, grid)
 
-      // No soil, nutrients are lost
+      // Empty cells can hold nutrients (conservation law)
       let total = 0
       for (const row of newGrid) {
         for (const cell of row) {
           total += cell.nutrientAmount
         }
       }
-      expect(total).toBe(0)
+      expect(total).toBe(10)
+    })
+
+    it('should exclude wall cells from distribution', () => {
+      const grid = createGrid(3, 3, 'wall')
+      grid[1][1].type = 'empty' // center
+      grid[0][1].type = 'soil' // only one non-wall neighbor
+
+      const monster = createMonster({
+        position: { x: 1, y: 1 },
+        carryingNutrient: 6,
+      })
+      const newGrid = releaseNutrientsOnDeath(monster, grid)
+
+      // 2 non-wall cells (center empty + up soil) → 3 each
+      expect(newGrid[0][1].nutrientAmount).toBe(3) // soil up
+      expect(newGrid[1][1].nutrientAmount).toBe(3) // empty center
     })
   })
 
@@ -370,6 +375,7 @@ describe('Nutrient System', () => {
         totalInitialNutrients: 100,
         digPower: 100,
         gameTime: 0,
+        nextMonsterId: 0,
       }
 
       const total = getTotalNutrients(state)
@@ -388,6 +394,7 @@ describe('Nutrient System', () => {
         totalInitialNutrients: 100,
         digPower: 100,
         gameTime: 0,
+        nextMonsterId: 0,
       }
 
       expect(isWorldDying(state, 0.1)).toBe(true) // 5 < 100 * 0.1
@@ -403,6 +410,7 @@ describe('Nutrient System', () => {
         totalInitialNutrients: 100,
         digPower: 100,
         gameTime: 0,
+        nextMonsterId: 0,
       }
 
       expect(isWorldDying(state, 0.1)).toBe(false) // 50 >= 100 * 0.1

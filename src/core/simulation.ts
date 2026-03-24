@@ -1,9 +1,42 @@
-import { NUTRIENT_SPAWN_THRESHOLDS, INITIAL_DIG_POWER, NUTRIENT_CARRY_CAPACITY } from './constants'
-import type { Cell, GameEvent, GameState, Monster, MonsterType, Position } from './types'
-import { MOVEMENT_LIFE_COST, MONSTER_CONFIGS } from './constants'
+import {
+  NUTRIENT_SPAWN_THRESHOLDS,
+  INITIAL_DIG_POWER,
+  NUTRIENT_CARRY_CAPACITY,
+  BUD_NUTRIENT_THRESHOLD,
+  BUD_LIFE_THRESHOLD,
+  FLOWER_NUTRIENT_THRESHOLD,
+  PUPA_NUTRIENT_THRESHOLD,
+  PUPA_DURATION,
+  LAYING_NUTRIENT_THRESHOLD,
+  LAYING_LIFE_THRESHOLD,
+  LAYING_DURATION,
+  EGG_HATCH_DURATION,
+  MOVEMENT_LIFE_COST,
+  MONSTER_CONFIGS,
+} from './constants'
+import type {
+  Cell,
+  GameEvent,
+  GameState,
+  Monster,
+  MonsterType,
+  MonsterPhase,
+  Position,
+} from './types'
 import { calculateMove, MoveResult } from './movement'
 import { processPredation } from './predation'
-import { depleteOnDig, absorbNutrient, releaseNutrient, releaseNutrientsOnDeath } from './nutrient'
+import {
+  absorbNutrient,
+  releaseNutrient,
+  releaseNutrientsOnDeath,
+  getSurroundingCells,
+} from './nutrient'
+
+const INITIAL_PHASE: Record<MonsterType, MonsterPhase> = {
+  nijirigoke: 'mobile',
+  gajigajimushi: 'larva',
+  lizardman: 'normal',
+}
 
 export function generateMonsterId(state: GameState): { id: string; nextMonsterId: number } {
   const id = `monster-${state.nextMonsterId + 1}`
@@ -132,6 +165,7 @@ export function applyMovements(plannedMoves: PlannedMove[]): { monsters: Monster
     position: move.result.position,
     direction: move.result.direction,
     nestPosition: move.result.nestPosition ?? move.monster.nestPosition,
+    nestOrientation: move.result.nestOrientation ?? move.monster.nestOrientation,
   }))
 
   return { monsters: movedMonsters }
@@ -194,6 +228,388 @@ export function processNutrientInteractions(
 }
 
 /**
+ * Mutable counter for generating unique monster IDs within a single tick
+ */
+interface IdCounter {
+  value: number
+}
+
+function generateId(counter: IdCounter): string {
+  counter.value++
+  return `monster-${counter.value}`
+}
+
+/**
+ * Process phase transitions for all monsters
+ * Called after life decrease/death in tick()
+ */
+export function processPhaseTransitions(state: GameState): {
+  monsters: Monster[]
+  grid: Cell[][]
+  events: GameEvent[]
+  newMonsters: Monster[]
+  nextMonsterId: number
+} {
+  const events: GameEvent[] = []
+  const updatedMonsters: Monster[] = []
+  const newMonsters: Monster[] = []
+  let currentGrid = state.grid
+  const idCounter: IdCounter = { value: state.nextMonsterId }
+
+  for (const monster of state.monsters) {
+    const result = processMonsterPhase(monster, currentGrid, idCounter, events, newMonsters)
+    // Filter out dead monsters (life < 0 signals death after reproduction)
+    if (result.monster.life >= 0) {
+      updatedMonsters.push(result.monster)
+    }
+    currentGrid = result.grid
+  }
+
+  return {
+    monsters: [...updatedMonsters, ...newMonsters],
+    grid: currentGrid,
+    events,
+    newMonsters,
+    nextMonsterId: idCounter.value,
+  }
+}
+
+function processMonsterPhase(
+  monster: Monster,
+  grid: Cell[][],
+  idCounter: IdCounter,
+  events: GameEvent[],
+  newMonsters: Monster[]
+): { monster: Monster; grid: Cell[][] } {
+  switch (monster.type) {
+    case 'nijirigoke':
+      return processNijirigokePhase(monster, grid, idCounter, events, newMonsters)
+    case 'gajigajimushi':
+      return processGajigajimushiPhase(monster, grid, idCounter, events, newMonsters)
+    case 'lizardman':
+      return processLizardmanPhase(monster, grid, idCounter, events, newMonsters)
+    default:
+      return { monster, grid }
+  }
+}
+
+function processNijirigokePhase(
+  monster: Monster,
+  grid: Cell[][],
+  idCounter: IdCounter,
+  events: GameEvent[],
+  newMonsters: Monster[]
+): { monster: Monster; grid: Cell[][] } {
+  const phase = monster.phase
+
+  // mobile → bud
+  if (
+    phase === 'mobile' &&
+    monster.carryingNutrient >= BUD_NUTRIENT_THRESHOLD &&
+    monster.life <= BUD_LIFE_THRESHOLD
+  ) {
+    events.push({
+      type: 'PHASE_TRANSITION',
+      monsterId: monster.id,
+      oldPhase: 'mobile',
+      newPhase: 'bud',
+    })
+    return { monster: { ...monster, phase: 'bud', phaseTickCounter: 0 }, grid }
+  }
+
+  // bud → flower
+  if (phase === 'bud' && monster.carryingNutrient >= FLOWER_NUTRIENT_THRESHOLD) {
+    events.push({
+      type: 'PHASE_TRANSITION',
+      monsterId: monster.id,
+      oldPhase: 'bud',
+      newPhase: 'flower',
+    })
+    return { monster: { ...monster, phase: 'flower', phaseTickCounter: 0 }, grid }
+  }
+
+  // flower: accelerated life drain (2x normal rate) + transition to withered
+  if (phase === 'flower') {
+    const newLife = monster.life - 2
+    if (newLife <= 0) {
+      events.push({
+        type: 'PHASE_TRANSITION',
+        monsterId: monster.id,
+        oldPhase: 'flower',
+        newPhase: 'withered',
+      })
+      return { monster: { ...monster, life: 0, phase: 'withered', phaseTickCounter: 0 }, grid }
+    }
+    return { monster: { ...monster, life: newLife }, grid }
+  }
+
+  // withered: reproduce (spawn up to 5 offspring, distribute nutrients evenly)
+  if (phase === 'withered' && monster.carryingNutrient > 0) {
+    const maxOffspring = 5
+    const surroundingCells = getSurroundingCells(monster.position, grid)
+    const emptyCells = surroundingCells.filter(
+      (pos) =>
+        grid[pos.y][pos.x].type === 'empty' &&
+        !(pos.x === monster.position.x && pos.y === monster.position.y)
+    )
+
+    const spawnCount = Math.min(maxOffspring, emptyCells.length, monster.carryingNutrient)
+    if (spawnCount === 0) {
+      // No space to reproduce - die and release nutrients (conservation law)
+      events.push({ type: 'MONSTER_DIED', monster, cause: 'starvation' })
+      const updatedGrid = releaseNutrientsOnDeath(monster, grid)
+      return { monster: { ...monster, carryingNutrient: 0, life: -1 }, grid: updatedGrid }
+    }
+    if (spawnCount > 0) {
+      const nutrientsPerChild = Math.floor(monster.carryingNutrient / spawnCount)
+      let remainder = monster.carryingNutrient % spawnCount
+      const offspringIds: string[] = []
+      const positions: Position[] = []
+
+      for (let i = 0; i < spawnCount; i++) {
+        const id = generateId(idCounter)
+        const extra = remainder > 0 ? 1 : 0
+        if (remainder > 0) remainder--
+
+        const child: Monster = {
+          id,
+          type: 'nijirigoke',
+          position: { ...emptyCells[i] },
+          direction: (['up', 'down', 'left', 'right'] as const)[i % 4],
+          pattern: 'straight',
+          phase: 'mobile',
+          phaseTickCounter: 0,
+          life: MONSTER_CONFIGS.nijirigoke.life,
+          maxLife: MONSTER_CONFIGS.nijirigoke.life,
+          attack: 0,
+          predationTargets: [],
+          carryingNutrient: nutrientsPerChild + extra,
+          nestPosition: null,
+          nestOrientation: null,
+        }
+        newMonsters.push(child)
+        offspringIds.push(id)
+        positions.push({ ...emptyCells[i] })
+      }
+
+      events.push({
+        type: 'MONSTER_REPRODUCED',
+        parentId: monster.id,
+        offspringIds,
+        positions,
+      })
+
+      // Parent dies after reproduction (nutrients fully distributed to children)
+      events.push({ type: 'MONSTER_DIED', monster, cause: 'starvation' })
+      // Return null-like marker to remove parent (set life to -1 as death signal)
+      return { monster: { ...monster, carryingNutrient: 0, life: -1 }, grid }
+    }
+  }
+
+  return { monster, grid }
+}
+
+function processGajigajimushiPhase(
+  monster: Monster,
+  grid: Cell[][],
+  idCounter: IdCounter,
+  events: GameEvent[],
+  newMonsters: Monster[]
+): { monster: Monster; grid: Cell[][] } {
+  const phase = monster.phase
+
+  // larva → pupa (requires nutrients + at least 2 adjacent empty cells)
+  if (phase === 'larva' && monster.carryingNutrient >= PUPA_NUTRIENT_THRESHOLD) {
+    const adjacentCells = getSurroundingCells(monster.position, grid)
+    const emptyCellCount = adjacentCells.filter(
+      (pos) =>
+        grid[pos.y][pos.x].type === 'empty' &&
+        !(pos.x === monster.position.x && pos.y === monster.position.y)
+    ).length
+    if (emptyCellCount >= 2) {
+      events.push({
+        type: 'PHASE_TRANSITION',
+        monsterId: monster.id,
+        oldPhase: 'larva',
+        newPhase: 'pupa',
+      })
+      return { monster: { ...monster, phase: 'pupa', phaseTickCounter: 0 }, grid }
+    }
+  }
+
+  // pupa → adult (after PUPA_DURATION ticks)
+  if (phase === 'pupa') {
+    const newCounter = monster.phaseTickCounter + 1
+    if (newCounter >= PUPA_DURATION) {
+      events.push({
+        type: 'PHASE_TRANSITION',
+        monsterId: monster.id,
+        oldPhase: 'pupa',
+        newPhase: 'adult',
+      })
+      return { monster: { ...monster, phase: 'adult', phaseTickCounter: 0 }, grid }
+    }
+    return { monster: { ...monster, phaseTickCounter: newCounter }, grid }
+  }
+
+  // adult: reproduce (spawn 1 larva, costs nutrients and life)
+  if (
+    phase === 'adult' &&
+    monster.carryingNutrient >= PUPA_NUTRIENT_THRESHOLD &&
+    monster.life > 10
+  ) {
+    const surroundingCells = getSurroundingCells(monster.position, grid)
+    const emptyCells = surroundingCells.filter(
+      (pos) =>
+        grid[pos.y][pos.x].type === 'empty' &&
+        !(pos.x === monster.position.x && pos.y === monster.position.y)
+    )
+
+    if (emptyCells.length > 0) {
+      const id = generateId(idCounter)
+      const childNutrients = Math.floor(monster.carryingNutrient / 2)
+
+      const child: Monster = {
+        id,
+        type: 'gajigajimushi',
+        position: { ...emptyCells[0] },
+        direction: monster.direction,
+        pattern: 'refraction',
+        phase: 'larva',
+        phaseTickCounter: 0,
+        life: MONSTER_CONFIGS.gajigajimushi.life,
+        maxLife: MONSTER_CONFIGS.gajigajimushi.life,
+        attack: MONSTER_CONFIGS.gajigajimushi.attack,
+        predationTargets: [...MONSTER_CONFIGS.gajigajimushi.predationTargets],
+        carryingNutrient: childNutrients,
+        nestPosition: null,
+        nestOrientation: null,
+      }
+      newMonsters.push(child)
+      events.push({
+        type: 'MONSTER_REPRODUCED',
+        parentId: monster.id,
+        offspringIds: [id],
+        positions: [{ ...emptyCells[0] }],
+      })
+
+      return {
+        monster: {
+          ...monster,
+          carryingNutrient: monster.carryingNutrient - childNutrients,
+          life: monster.life - 5,
+        },
+        grid,
+      }
+    }
+  }
+
+  return { monster, grid }
+}
+
+function processLizardmanPhase(
+  monster: Monster,
+  grid: Cell[][],
+  idCounter: IdCounter,
+  events: GameEvent[],
+  newMonsters: Monster[]
+): { monster: Monster; grid: Cell[][] } {
+  const phase = monster.phase
+
+  // normal/nesting → laying (must be at nest center)
+  if (
+    (phase === 'normal' || phase === 'nesting') &&
+    monster.nestPosition &&
+    monster.nestOrientation &&
+    monster.position.x === monster.nestPosition.x &&
+    monster.position.y === monster.nestPosition.y &&
+    monster.carryingNutrient >= LAYING_NUTRIENT_THRESHOLD &&
+    monster.life >= LAYING_LIFE_THRESHOLD
+  ) {
+    events.push({
+      type: 'PHASE_TRANSITION',
+      monsterId: monster.id,
+      oldPhase: phase,
+      newPhase: 'laying',
+    })
+    return { monster: { ...monster, phase: 'laying', phaseTickCounter: 0 }, grid }
+  }
+
+  // laying → spawn egg (after LAYING_DURATION ticks)
+  if (phase === 'laying') {
+    const newCounter = monster.phaseTickCounter + 1
+    if (newCounter >= LAYING_DURATION) {
+      // Spawn egg entity
+      const eggId = generateId(idCounter)
+      const eggNutrients = Math.floor(monster.carryingNutrient / 2)
+      const egg: Monster = {
+        id: eggId,
+        type: 'lizardman',
+        position: { ...monster.nestPosition! },
+        direction: monster.direction,
+        pattern: 'stationary',
+        phase: 'egg',
+        phaseTickCounter: 0,
+        life: 1,
+        maxLife: 1,
+        attack: 0,
+        predationTargets: [],
+        carryingNutrient: eggNutrients,
+        nestPosition: null,
+        nestOrientation: null,
+      }
+      newMonsters.push(egg)
+      events.push({
+        type: 'EGG_LAID',
+        parentId: monster.id,
+        eggId,
+        position: { ...monster.nestPosition! },
+      })
+
+      // Parent returns to normal, loses half nutrients
+      return {
+        monster: {
+          ...monster,
+          phase: 'normal',
+          phaseTickCounter: 0,
+          carryingNutrient: monster.carryingNutrient - eggNutrients,
+        },
+        grid,
+      }
+    }
+    return { monster: { ...monster, phaseTickCounter: newCounter }, grid }
+  }
+
+  // egg → hatch (after EGG_HATCH_DURATION ticks)
+  if (phase === 'egg') {
+    const newCounter = monster.phaseTickCounter + 1
+    if (newCounter >= EGG_HATCH_DURATION) {
+      // Egg hatches into a baby lizardman
+      events.push({
+        type: 'EGG_HATCHED',
+        offspringId: monster.id,
+        position: { ...monster.position },
+      })
+      return {
+        monster: {
+          ...monster,
+          phase: 'normal',
+          phaseTickCounter: 0,
+          life: MONSTER_CONFIGS.lizardman.life,
+          maxLife: MONSTER_CONFIGS.lizardman.life,
+          attack: MONSTER_CONFIGS.lizardman.attack,
+          predationTargets: [...MONSTER_CONFIGS.lizardman.predationTargets],
+        },
+        grid,
+      }
+    }
+    return { monster: { ...monster, phaseTickCounter: newCounter }, grid }
+  }
+
+  return { monster, grid }
+}
+
+/**
  * Decrease life for all monsters that moved
  */
 export function decreaseLifeForMoved(
@@ -214,6 +630,16 @@ export function decreaseLifeForMoved(
       if (!moved) return monster
 
       if (monster.type === 'nijirigoke' && monster.carryingNutrient > 0) {
+        // Deposit 1 nutrient to the cell monster moved from (conservation law)
+        const orig = original
+        currentGrid = currentGrid.map((row, y) =>
+          row.map((c, x) => {
+            if (x === orig.x && y === orig.y) {
+              return { ...c, nutrientAmount: c.nutrientAmount + 1 }
+            }
+            return c
+          })
+        )
         return { ...monster, carryingNutrient: monster.carryingNutrient - 1 }
       }
       const newLife = monster.life - MOVEMENT_LIFE_COST
@@ -271,12 +697,22 @@ export function tick(
   )
   allEvents.push(...lifeResult.events)
 
+  // 7. Process phase transitions (after life decrease/death)
+  const phaseState: GameState = {
+    ...state,
+    grid: lifeResult.grid,
+    monsters: lifeResult.monsters,
+  }
+  const phaseResult = processPhaseTransitions(phaseState)
+  allEvents.push(...phaseResult.events)
+
   return {
     state: {
       ...state,
-      grid: lifeResult.grid,
-      monsters: lifeResult.monsters,
+      grid: phaseResult.grid,
+      monsters: phaseResult.monsters,
       gameTime: state.gameTime + 1,
+      nextMonsterId: phaseResult.nextMonsterId,
     },
     events: allEvents,
   }
@@ -350,7 +786,7 @@ export function dig(
   const newGrid = state.grid.map((row, y) =>
     row.map((c, x) => {
       if (x === position.x && y === position.y) {
-        return { type: 'empty' as const, nutrientAmount: 0 }
+        return { type: 'empty' as const, nutrientAmount: 0, magicAmount: 0 }
       }
       return c
     })
@@ -368,13 +804,21 @@ export function dig(
     }
   }
 
-  // Calculate available nutrients (70% of soil nutrients, 30% lost)
-  const availableNutrients = depleteOnDig(cell.nutrientAmount)
+  // Conservation law: 100% of soil nutrients must be preserved
+  // life = min(N, maxLife) per spec; excess nutrients go to carryingNutrient + surrounding cells
+  const totalNutrients = cell.nutrientAmount
 
-  // Spawn Nijirigoke with life based on nutrients
-  const monsterType = getMonsterTypeByNutrient(cell.nutrientAmount)
+  // Spawn monster based on nutrient level
+  const monsterType = getMonsterTypeByNutrient(totalNutrients)
   const config = MONSTER_CONFIGS[monsterType]
   const { id: monsterId, nextMonsterId } = generateMonsterId(state)
+
+  // Life based on nutrients (capped at maxLife)
+  const initialLife = Math.min(totalNutrients, config.life)
+  // Remaining nutrients after life allocation go to carryingNutrient + surrounding cells
+  const nutrientsAfterLife = totalNutrients - initialLife
+  const carried = Math.min(nutrientsAfterLife, NUTRIENT_CARRY_CAPACITY)
+  const remaining = nutrientsAfterLife - carried
 
   const newMonster: Monster = {
     id: monsterId,
@@ -382,14 +826,37 @@ export function dig(
     position: { ...position },
     direction: (['up', 'down', 'left', 'right'] as const)[Math.floor(randomFn() * 4)],
     pattern: config.pattern,
-    life: config.life,
+    phase: INITIAL_PHASE[monsterType],
+    phaseTickCounter: 0,
+    life: initialLife,
     maxLife: config.life,
     attack: config.attack,
     predationTargets: [...config.predationTargets],
-    carryingNutrient: config.canCarryNutrients
-      ? Math.min(availableNutrients, NUTRIENT_CARRY_CAPACITY)
-      : 0,
+    carryingNutrient: carried,
     nestPosition: null,
+    nestOrientation: null,
+  }
+
+  // Distribute surplus nutrients to surrounding cells
+  let finalGrid = newGrid
+  if (remaining > 0) {
+    const surroundingCells = getSurroundingCells(position, newGrid)
+    if (surroundingCells.length > 0) {
+      const perCell = Math.floor(remaining / surroundingCells.length)
+      let surplus = remaining % surroundingCells.length
+      finalGrid = newGrid.map((row, y) =>
+        row.map((c, x) => {
+          const match = surroundingCells.find((s) => s.x === x && s.y === y)
+          if (match) {
+            const extra = surplus > 0 ? 1 : 0
+            if (surplus > 0) surplus--
+            // Conservation law takes priority over MAX_NUTRIENT_PER_CELL cap
+            return { ...c, nutrientAmount: c.nutrientAmount + perCell + extra }
+          }
+          return c
+        })
+      )
+    }
   }
 
   events.push({ type: 'MONSTER_SPAWNED', monster: newMonster })
@@ -397,11 +864,62 @@ export function dig(
   return {
     state: {
       ...state,
-      grid: newGrid,
+      grid: finalGrid,
       monsters: [...state.monsters, newMonster],
       digPower: state.digPower - 1,
       nextMonsterId,
     },
+    events,
+  }
+}
+
+/**
+ * Attack a monster with the pickaxe
+ * Life is outside conservation law, but carried nutrients are released on death
+ */
+export function attackMonster(
+  state: GameState,
+  monsterId: string,
+  damage: number
+): { state: GameState; events: GameEvent[] } | { error: string } {
+  const monsterIndex = state.monsters.findIndex((m) => m.id === monsterId)
+  if (monsterIndex === -1) {
+    return { error: 'Monster not found' }
+  }
+
+  const monster = state.monsters[monsterIndex]
+  const events: GameEvent[] = []
+
+  const newLife = monster.life - damage
+  events.push({
+    type: 'MONSTER_ATTACKED',
+    monsterId,
+    damage,
+    remainingLife: Math.max(0, newLife),
+  })
+
+  if (newLife <= 0) {
+    // Monster dies - release carried nutrients (conservation law)
+    const newGrid = releaseNutrientsOnDeath(monster, state.grid)
+    events.push({ type: 'MONSTER_DIED', monster, cause: 'pickaxe' })
+
+    return {
+      state: {
+        ...state,
+        grid: newGrid,
+        monsters: state.monsters.filter((m) => m.id !== monsterId),
+      },
+      events,
+    }
+  }
+
+  // Monster survives
+  const updatedMonsters = state.monsters.map((m) =>
+    m.id === monsterId ? { ...m, life: newLife } : m
+  )
+
+  return {
+    state: { ...state, monsters: updatedMonsters },
     events,
   }
 }
@@ -422,13 +940,13 @@ export function createGameState(width: number, height: number, soilRatio: number
     for (let x = 0; x < width; x++) {
       // Borders are walls
       if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
-        row.push({ type: 'wall', nutrientAmount: 0 })
+        row.push({ type: 'wall', nutrientAmount: 0, magicAmount: 0 })
       } else if (x === entryX && y === entryY) {
-        row.push({ type: 'empty', nutrientAmount: 0 })
+        row.push({ type: 'empty', nutrientAmount: 0, magicAmount: 0 })
       } else if (Math.random() < soilRatio) {
-        row.push({ type: 'soil', nutrientAmount: 0 })
+        row.push({ type: 'soil', nutrientAmount: 0, magicAmount: 0 })
       } else {
-        row.push({ type: 'empty', nutrientAmount: 0 })
+        row.push({ type: 'empty', nutrientAmount: 0, magicAmount: 0 })
       }
     }
     grid.push(row)

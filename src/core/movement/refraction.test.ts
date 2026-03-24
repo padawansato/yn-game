@@ -4,7 +4,7 @@ import { calculateRefractionMove } from './refraction'
 
 function createGrid(width: number, height: number, type: Cell['type'] = 'empty'): Cell[][] {
   return Array.from({ length: height }, () =>
-    Array.from({ length: width }, () => ({ type, nutrientAmount: 0 }))
+    Array.from({ length: width }, () => ({ type, nutrientAmount: 0, magicAmount: 0 }))
   )
 }
 
@@ -15,12 +15,15 @@ function createMonster(overrides: Partial<Monster> = {}): Monster {
     position: { x: 2, y: 2 },
     direction: 'right',
     pattern: 'refraction',
+    phase: 'larva' as const,
+    phaseTickCounter: 0,
     life: 30,
     maxLife: 30,
     attack: 3,
     predationTargets: ['nijirigoke'],
     carryingNutrient: 0,
     nestPosition: null,
+    nestOrientation: null,
     ...overrides,
   }
 }

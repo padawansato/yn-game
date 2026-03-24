@@ -1,15 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import type { Cell, Monster } from './types'
-import {
-  canPredate,
-  checkSameCellPredation,
-  applyPredation,
-  processPredation,
-} from './predation'
+import { canPredate, checkSameCellPredation, applyPredation, processPredation } from './predation'
 
 function createGrid(width: number, height: number, type: Cell['type'] = 'empty'): Cell[][] {
   return Array.from({ length: height }, () =>
-    Array.from({ length: width }, () => ({ type, nutrientAmount: 0 }))
+    Array.from({ length: width }, () => ({ type, nutrientAmount: 0, magicAmount: 0 }))
   )
 }
 
@@ -20,12 +15,15 @@ function createMonster(overrides: Partial<Monster> = {}): Monster {
     position: { x: 0, y: 0 },
     direction: 'right',
     pattern: 'straight',
+    phase: 'mobile' as const,
+    phaseTickCounter: 0,
     life: 10,
     maxLife: 10,
     attack: 0,
     predationTargets: [],
     carryingNutrient: 0,
     nestPosition: null,
+    nestOrientation: null,
     ...overrides,
   }
 }
@@ -243,12 +241,13 @@ describe('Predation System', () => {
 
       const result = processPredation([predator, prey], grid)
 
-      // Nutrients should be distributed to adjacent soil
+      // Nutrients distributed to surrounding 9 cells (conservation law)
       let total = 0
-      total += result.grid[4][5].nutrientAmount // up
-      total += result.grid[6][5].nutrientAmount // down
-      total += result.grid[5][4].nutrientAmount // left
-      total += result.grid[5][6].nutrientAmount // right
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          total += result.grid[5 + dy][5 + dx].nutrientAmount
+        }
+      }
       expect(total).toBe(8)
     })
 

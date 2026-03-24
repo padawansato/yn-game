@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  MONSTER_CONFIGS,
-  NUTRIENT_DEPLETION_RATIO,
-  HUNGER_THRESHOLD_RATIO,
-} from './constants'
+import { MONSTER_CONFIGS, HUNGER_THRESHOLD_RATIO } from './constants'
 
 describe('Constants', () => {
   describe('MONSTER_CONFIGS', () => {
@@ -33,10 +29,6 @@ describe('Constants', () => {
   })
 
   describe('Game parameters', () => {
-    it('should have nutrient depletion ratio of 0.3', () => {
-      expect(NUTRIENT_DEPLETION_RATIO).toBe(0.3)
-    })
-
     it('should have hunger threshold ratio of 0.3', () => {
       expect(HUNGER_THRESHOLD_RATIO).toBe(0.3)
     })

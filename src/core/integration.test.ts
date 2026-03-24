@@ -13,7 +13,7 @@ import {
 
 function createGrid(width: number, height: number, type: Cell['type'] = 'empty'): Cell[][] {
   return Array.from({ length: height }, () =>
-    Array.from({ length: width }, () => ({ type, nutrientAmount: 0 }))
+    Array.from({ length: width }, () => ({ type, nutrientAmount: 0, magicAmount: 0 }))
   )
 }
 
@@ -30,7 +30,6 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
 }
 
 describe('Integration Tests', () => {
-
   describe('Full game cycle', () => {
     it('should handle dig -> multiple ticks -> predation cycle', () => {
       // Create grid with empty space for movement
@@ -39,10 +38,10 @@ describe('Integration Tests', () => {
       for (let y = 0; y < 10; y++) {
         for (let x = 0; x < 10; x++) {
           if (x === 0 || x === 9 || y === 0 || y === 9) {
-            grid[y][x] = { type: 'wall', nutrientAmount: 0 }
+            grid[y][x] = { type: 'wall', nutrientAmount: 0, magicAmount: 0 }
           } else if (x === 3 && y === 3) {
             // Soil block to dig - low nutrients to spawn Nijirigoke (below gajigajimushi threshold of 10)
-            grid[y][x] = { type: 'soil', nutrientAmount: 5 }
+            grid[y][x] = { type: 'soil', nutrientAmount: 5, magicAmount: 0 }
           }
         }
       }
@@ -73,7 +72,7 @@ describe('Integration Tests', () => {
       }
     })
 
-    it('should track world entropy through dig actions', () => {
+    it('should preserve nutrients through dig actions (conservation law)', () => {
       // Create grid with soil
       const grid = createGrid(10, 10, 'soil')
 
@@ -91,8 +90,7 @@ describe('Integration Tests', () => {
       const initialNutrients = getTotalNutrients(state)
       expect(initialNutrients).toBe(1000)
 
-      // Dig multiple times (each dig loses 30% of cell nutrients)
-      // Now we can dig sequentially from the entry point
+      // Dig multiple times - nutrients should be conserved
       for (let i = 0; i < 5; i++) {
         const result = dig(state, { x: 2 + i, y: 2 })
         if (!('error' in result)) {
@@ -100,9 +98,11 @@ describe('Integration Tests', () => {
         }
       }
 
-      // Total nutrients should have decreased
+      // Nutrients in cells + carryingNutrient are preserved, minus what was consumed as monster life
+      // life = min(soilNutrient, maxLife) is outside conservation law per spec
       const finalNutrients = getTotalNutrients(state)
-      expect(finalNutrients).toBeLessThan(initialNutrients)
+      const totalLifeConsumed = state.monsters.reduce((sum, m) => sum + m.life, 0)
+      expect(finalNutrients + totalLifeConsumed).toBe(initialNutrients)
     })
 
     it('should detect world dying when nutrients are low', () => {
@@ -129,12 +129,15 @@ describe('Integration Tests', () => {
         position: { x: 6, y: 5 }, // moving left to (5,5)
         direction: 'left',
         pattern: 'straight',
+        phase: 'mobile',
+        phaseTickCounter: 0,
         life: 10,
         maxLife: 10,
         attack: 0,
         predationTargets: [],
         carryingNutrient: 0,
         nestPosition: null,
+        nestOrientation: null,
       }
 
       const gajigajimushi: Monster = {
@@ -143,12 +146,15 @@ describe('Integration Tests', () => {
         position: { x: 4, y: 5 }, // moving right to (5,5)
         direction: 'right',
         pattern: 'straight',
+        phase: 'larva',
+        phaseTickCounter: 0,
         life: 20,
         maxLife: 30,
         attack: 3,
         predationTargets: ['nijirigoke'],
         carryingNutrient: 0,
         nestPosition: null,
+        nestOrientation: null,
       }
 
       let state = createGameState({
@@ -181,12 +187,15 @@ describe('Integration Tests', () => {
         position: { x: 5, y: 5 },
         direction: 'right',
         pattern: 'straight',
+        phase: 'mobile',
+        phaseTickCounter: 0,
         life: 3, // will die after 3 moves
         maxLife: 10,
         attack: 0,
         predationTargets: [],
         carryingNutrient: 0,
         nestPosition: null,
+        nestOrientation: null,
       }
 
       let state = createGameState({ grid, monsters: [monster] })
@@ -222,12 +231,15 @@ describe('Integration Tests', () => {
         position: { x: 6, y: 5 }, // moving left to (5,5)
         direction: 'left',
         pattern: 'straight',
+        phase: 'mobile',
+        phaseTickCounter: 0,
         life: 10,
         maxLife: 10,
         attack: 0,
         predationTargets: [],
         carryingNutrient: 8, // carrying nutrients
         nestPosition: null,
+        nestOrientation: null,
       }
 
       const gajigajimushi: Monster = {
@@ -236,12 +248,15 @@ describe('Integration Tests', () => {
         position: { x: 4, y: 5 }, // moving right to (5,5)
         direction: 'right',
         pattern: 'straight',
+        phase: 'larva',
+        phaseTickCounter: 0,
         life: 20,
         maxLife: 30,
         attack: 3,
         predationTargets: ['nijirigoke'],
         carryingNutrient: 0,
         nestPosition: null,
+        nestOrientation: null,
       }
 
       let state = createGameState({
@@ -252,15 +267,16 @@ describe('Integration Tests', () => {
       const result = tick(state)
       state = result.state
 
-      // Nutrient should be released to adjacent soil cells
-      // Position (5,5) is surrounded by soil at (4,5), (6,5), (5,4), (5,6)
-      // But (4,5) and (6,5) are empty, so only (5,4) and (5,6) are soil
+      // Nutrients released to surrounding 9 cells (8 adjacent + center), excluding walls
+      // Position (5,5) has mixed soil/empty neighbors
       let totalReleased = 0
-      totalReleased += state.grid[4][5].nutrientAmount // up (soil)
-      totalReleased += state.grid[6][5].nutrientAmount // down (soil)
-      // Left and right were made empty so they won't receive nutrients
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          totalReleased += state.grid[5 + dy][5 + dx].nutrientAmount
+        }
+      }
 
-      // The 8 nutrients should be distributed among adjacent soil cells
+      // All 8 nutrients should be conserved across surrounding cells
       expect(totalReleased).toBe(8)
     })
 
@@ -273,12 +289,15 @@ describe('Integration Tests', () => {
         position: { x: 5, y: 5 },
         direction: 'right',
         pattern: 'straight',
+        phase: 'mobile',
+        phaseTickCounter: 0,
         life: 1, // will die after 1 move
         maxLife: 10,
         attack: 0,
         predationTargets: [],
         carryingNutrient: 0,
         nestPosition: null,
+        nestOrientation: null,
       }
 
       let state = createGameState({ grid, monsters: [monster] })
@@ -319,12 +338,15 @@ describe('Integration Tests', () => {
         position: { x: 3, y: 5 },
         direction: 'right', // will move to (4,5)
         pattern: 'straight',
+        phase: 'mobile',
+        phaseTickCounter: 0,
         life: 16,
         maxLife: 16,
         attack: 0,
         predationTargets: [],
         carryingNutrient: 0,
         nestPosition: null,
+        nestOrientation: null,
       }
 
       let state = createGameState({ grid, monsters: [monster] })
@@ -357,12 +379,15 @@ describe('Integration Tests', () => {
         position: { x: 3, y: 5 },
         direction: 'right',
         pattern: 'straight',
+        phase: 'mobile',
+        phaseTickCounter: 0,
         life: 16,
         maxLife: 16,
         attack: 0,
         predationTargets: [],
         carryingNutrient: 3, // starts with some nutrients
         nestPosition: null,
+        nestOrientation: null,
       }
 
       let state = createGameState({ grid, monsters: [monster] })
@@ -392,12 +417,15 @@ describe('Integration Tests', () => {
         position: { x: 5, y: 5 },
         direction: 'right',
         pattern: 'straight',
+        phase: 'mobile',
+        phaseTickCounter: 0,
         life: 10,
         maxLife: 10,
         attack: 0,
         predationTargets: [],
         carryingNutrient: 0,
         nestPosition: null,
+        nestOrientation: null,
       }
 
       let state = createGameState({ grid, monsters: [monster] })

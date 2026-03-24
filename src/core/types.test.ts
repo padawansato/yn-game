@@ -15,12 +15,15 @@ describe('Types', () => {
       position: { x: 5, y: 5 },
       direction: 'right',
       pattern: 'straight',
+      phase: 'mobile',
+      phaseTickCounter: 0,
       life: 10,
       maxLife: 10,
       attack: 0,
       predationTargets: [],
       carryingNutrient: 0,
       nestPosition: null,
+      nestOrientation: null,
     }
 
     expect(monster.type).toBe('nijirigoke')
@@ -35,12 +38,15 @@ describe('Types', () => {
       position: { x: 3, y: 3 },
       direction: 'up',
       pattern: 'refraction',
+      phase: 'larva',
+      phaseTickCounter: 0,
       life: 8, // Below 30% of maxLife (30)
       maxLife: 30,
       attack: 3,
       predationTargets: ['nijirigoke'],
       carryingNutrient: 0,
       nestPosition: null,
+      nestOrientation: null,
     }
 
     const isHungry = monster.life < monster.maxLife * 0.3

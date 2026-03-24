@@ -4,6 +4,10 @@ export type {
   Direction,
   MovementPattern,
   MonsterType,
+  NijirigokePhase,
+  GajigajimushiPhase,
+  LizardmanPhase,
+  MonsterPhase,
   Monster,
   CellType,
   Cell,
@@ -14,7 +18,6 @@ export type {
 // Constants
 export {
   MONSTER_CONFIGS,
-  NUTRIENT_DEPLETION_RATIO,
   NUTRIENT_CARRY_CAPACITY,
   NUTRIENT_RELEASE_THRESHOLD,
   HUNGER_THRESHOLD_RATIO,
@@ -22,17 +25,27 @@ export {
   DEFAULT_GRID_WIDTH,
   DEFAULT_GRID_HEIGHT,
   MAX_NUTRIENT_PER_CELL,
+  PICKAXE_DAMAGE,
+  BUD_NUTRIENT_THRESHOLD,
+  BUD_LIFE_THRESHOLD,
+  FLOWER_NUTRIENT_THRESHOLD,
+  PUPA_NUTRIENT_THRESHOLD,
+  PUPA_DURATION,
+  LAYING_NUTRIENT_THRESHOLD,
+  LAYING_LIFE_THRESHOLD,
+  LAYING_DURATION,
+  EGG_HATCH_DURATION,
 } from './constants'
 export type { MonsterConfig } from './constants'
 
 // Nutrient system
 export {
   initializeNutrients,
-  depleteOnDig,
   getTotalNutrients,
   isWorldDying,
   exponentialRandom,
   getAdjacentSoilCells,
+  getSurroundingCells,
   absorbNutrient,
   releaseNutrient,
   releaseNutrientsOnDeath,
@@ -54,12 +67,7 @@ export {
 export type { MoveResult } from './movement'
 
 // Predation
-export {
-  canPredate,
-  checkSameCellPredation,
-  applyPredation,
-  processPredation,
-} from './predation'
+export { canPredate, checkSameCellPredation, applyPredation, processPredation } from './predation'
 export type { PredationResult } from './predation'
 
 // Simulation
@@ -74,6 +82,8 @@ export {
   processNutrientInteractions,
   createGameState,
   generateMonsterId,
+  attackMonster,
+  processPhaseTransitions,
 } from './simulation'
 
 // Game Loop

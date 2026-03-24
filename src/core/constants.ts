@@ -37,9 +37,6 @@ export const MONSTER_CONFIGS: Record<MonsterType, MonsterConfig> = {
   },
 }
 
-// Nutrient depletion ratio when digging (30% lost)
-export const NUTRIENT_DEPLETION_RATIO = 0.3
-
 // Maximum nutrients a Nijirigoke can carry
 export const NUTRIENT_CARRY_CAPACITY = 10
 
@@ -67,3 +64,23 @@ export const MAX_NUTRIENT_PER_CELL = 100
 
 // Initial dig power
 export const INITIAL_DIG_POWER = 100
+
+// Pickaxe damage per attack
+export const PICKAXE_DAMAGE = 5
+
+// === Metamorphosis thresholds ===
+
+// Nijirigoke (コケ類) lifecycle
+export const BUD_NUTRIENT_THRESHOLD = 6 // mobile → bud: carryingNutrient >= threshold
+export const BUD_LIFE_THRESHOLD = 8 // mobile → bud: life <= threshold
+export const FLOWER_NUTRIENT_THRESHOLD = 8 // bud → flower: carryingNutrient >= threshold
+
+// Gajigajimushi (ムシ類) lifecycle
+export const PUPA_NUTRIENT_THRESHOLD = 5 // larva → pupa: carryingNutrient >= threshold
+export const PUPA_DURATION = 10 // pupa → adult: ticks to wait
+
+// Lizardman (トカゲ類) lifecycle
+export const LAYING_NUTRIENT_THRESHOLD = 5 // normal/nesting → laying: carryingNutrient >= threshold
+export const LAYING_LIFE_THRESHOLD = 40 // normal/nesting → laying: life >= threshold
+export const LAYING_DURATION = 15 // laying → egg spawn: ticks to wait
+export const EGG_HATCH_DURATION = 20 // egg → hatch: ticks to wait
