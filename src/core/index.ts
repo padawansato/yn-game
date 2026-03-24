@@ -89,3 +89,6 @@ export {
 // Game Loop
 export { GameLoop } from './game-loop'
 export type { TickCallback } from './game-loop'
+
+// Random
+export { createSeededRandom } from './random'

@@ -7,6 +7,7 @@ import {
   dig,
   getTotalNutrients,
   GameLoop,
+  createSeededRandom,
   LAYING_NUTRIENT_THRESHOLD,
   LAYING_LIFE_THRESHOLD,
   PUPA_NUTRIENT_THRESHOLD,
@@ -118,15 +119,6 @@ function handleReset() {
   gameState.value = createInitialState()
   events.value = []
   initGameLoop()
-}
-
-// === 固定乱数 ===
-function createSeededRandom(seed: number): () => number {
-  let s = seed
-  return () => {
-    s = (s * 1664525 + 1013904223) & 0xffffffff
-    return (s >>> 0) / 0x100000000
-  }
 }
 
 // === デバッグシナリオ ===
