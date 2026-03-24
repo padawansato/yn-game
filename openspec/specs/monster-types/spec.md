@@ -1,41 +1,49 @@
 ## ADDED Requirements
 
 ### Requirement: Monster type definitions
-The system SHALL define three monster types with distinct attributes and movement patterns.
+The system SHALL define three monster types with distinct attributes, movement patterns, and lifecycle phases.
 
 #### Scenario: Nijirigoke (Moss) - Straight type
 - **WHEN** a Nijirigoke is created
-- **THEN** it SHALL have movementPattern="straight", life=16, canCarryNutrients=true, predationTarget=none
+- **THEN** it SHALL have movementPattern="straight", life=16, canCarryNutrients=true, predationTarget=none, phase="mobile"
 
 #### Scenario: Gajigajimushi (Insect) - Refraction type
 - **WHEN** a Gajigajimushi is created
-- **THEN** it SHALL have movementPattern="refraction", life=30, attack=3, predationTarget=["nijirigoke", "egg"]
+- **THEN** it SHALL have movementPattern="refraction", life=30, attack=3, predationTarget=["nijirigoke", "egg"], phase="larva"
 
 #### Scenario: Lizardman - Stationary type
 - **WHEN** a Lizardman is created
-- **THEN** it SHALL have movementPattern="stationary", life=80, attack=8, predationTarget=["nijirigoke", "gajigajimushi"]
+- **THEN** it SHALL have movementPattern="stationary", life=80, attack=8, predationTarget=["nijirigoke", "gajigajimushi"], phase="normal"
 
 ### Requirement: Life decreases with movement
-Every monster SHALL lose life when performing movement actions.
+Monsters SHALL lose life when performing movement actions, unless their current phase exempts them.
 
 #### Scenario: Movement life cost
-- **WHEN** a monster moves one cell
+- **WHEN** a monster in a mobile phase moves one cell
 - **THEN** its life SHALL decrease by 1
+
+#### Scenario: Immobile phase exemption
+- **WHEN** a monster is in an immobile phase (bud, flower, pupa, laying, egg)
+- **THEN** it SHALL NOT incur movement life cost
 
 #### Scenario: Death by starvation
 - **WHEN** a monster's life reaches 0
-- **THEN** it SHALL die and be removed from the grid
+- **THEN** it SHALL die and be removed from the grid (triggering nutrient release per conservation law)
 
 ### Requirement: Hunger state
-Monsters SHALL enter hunger state when life drops below threshold.
+Monsters in mobile phases SHALL enter hunger state when life drops below threshold.
 
 #### Scenario: Hunger threshold
-- **WHEN** a monster's life falls below 30% of max life
+- **WHEN** a monster in a mobile phase has life below 30% of max life
 - **THEN** it SHALL enter "hungry" state
 
 #### Scenario: Hungry behavior
 - **WHEN** a monster is in hungry state
 - **THEN** its movement AI SHALL prioritize directions where prey exists
+
+#### Scenario: Immobile phase hunger
+- **WHEN** a monster is in an immobile phase (bud, pupa, laying, egg)
+- **THEN** hunger state SHALL NOT apply
 
 ### Requirement: Monster spawning from dig
 The system SHALL spawn Nijirigoke when player digs soil.

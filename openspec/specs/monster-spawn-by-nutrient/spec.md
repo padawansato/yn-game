@@ -26,8 +26,16 @@ The system SHALL spawn different monster types based on the soil's nutrient amou
 - **THEN** no monster SHALL spawn (existing behavior)
 
 ### Requirement: Spawned monster life based on nutrients
-The spawned monster's initial life SHALL be proportional to the available nutrients (70% of soil nutrients after depletion), capped at the monster's maxLife.
+The spawned monster's initial life SHALL be based on the full soil nutrients (no depletion), capped at the monster's maxLife. Excess nutrients SHALL be preserved per conservation law.
 
-#### Scenario: Monster life calculation
+#### Scenario: Monster life calculation (conservation)
 - **WHEN** a monster spawns from soil with N nutrients
-- **THEN** its initial life SHALL be min(N * 0.7, maxLife)
+- **THEN** its initial life SHALL be min(N, maxLife)
+
+#### Scenario: Excess nutrient handling
+- **WHEN** a monster spawns from soil with N nutrients AND N > maxLife
+- **THEN** the excess (N - maxLife) SHALL be set as the monster's initial carryingNutrient, or distributed to surrounding cells if carryingNutrient capacity is exceeded
+
+#### Scenario: Full nutrient transfer
+- **WHEN** a monster spawns from soil with N nutrients AND N <= maxLife
+- **THEN** the monster's initial life SHALL be N AND carryingNutrient SHALL be 0 AND the soil cell's nutrientAmount SHALL become 0
