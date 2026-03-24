@@ -104,10 +104,13 @@ A Lizardman SHALL construct a nest when it finds a suitable open space.
 - **WHEN** a Lizardman is at a position where a contiguous 2x3 or 3x2 empty space exists containing that position
 - **THEN** it SHALL establish a nest, recording the nest area (6 cells)
 
-#### Scenario: Nest cost (FUTURE)
+#### Scenario: Nest cost
 - **WHEN** a Lizardman builds a nest
 - **THEN** it SHALL consume NEST_NUTRIENT_COST (14) nutrients and NEST_LIFE_COST (2) life
-- **NOTE**: Not yet implemented. Currently nests are free. Planned for a future change.
+
+#### Scenario: Nest affordability
+- **WHEN** a Lizardman has carryingNutrient < NEST_NUTRIENT_COST OR life <= NEST_LIFE_COST
+- **THEN** it SHALL NOT establish a nest and SHALL continue using straight movement fallback
 
 #### Scenario: Shared nests (FUTURE)
 - **WHEN** a Lizardman encounters another Lizardman's nest

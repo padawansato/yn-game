@@ -35,6 +35,8 @@ export {
   LAYING_LIFE_THRESHOLD,
   LAYING_DURATION,
   EGG_HATCH_DURATION,
+  NEST_NUTRIENT_COST,
+  NEST_LIFE_COST,
 } from './constants'
 export type { MonsterConfig } from './constants'
 
@@ -84,6 +86,7 @@ export {
   generateMonsterId,
   attackMonster,
   processPhaseTransitions,
+  processNestEstablishment,
 } from './simulation'
 
 // Game Loop
