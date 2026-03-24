@@ -15,6 +15,9 @@ import {
   MONSTER_CONFIGS,
   NEST_NUTRIENT_COST,
   NEST_LIFE_COST,
+  GAJI_REPRO_LIFE_THRESHOLD,
+  GAJI_REPRO_LIFE_COST,
+  MOYOMOYO_DAMAGE,
 } from './constants'
 import type {
   Cell,
@@ -265,6 +268,83 @@ function generateId(counter: IdCounter): string {
 }
 
 /**
+ * Apply moyomoyo (flower ranged attack) from all flower-phase Nijirigoke.
+ * Each flower deals MOYOMOYO_DAMAGE to all gajigajimushi within its 9-cell area.
+ */
+export function applyMoyomoyoAttacks(
+  monsters: Monster[],
+  grid: Cell[][],
+  events: GameEvent[]
+): { monsters: Monster[]; grid: Cell[][] } {
+  const flowers = monsters.filter(
+    (m) => m.type === 'nijirigoke' && m.phase === 'flower'
+  )
+
+  if (flowers.length === 0) {
+    return { monsters, grid }
+  }
+
+  // Build a set of dead monster IDs to track kills across multiple flowers
+  const deadIds = new Set<string>()
+  // Track cumulative damage per monster (multiple flowers can stack)
+  const damageMap = new Map<string, number>()
+
+  for (const flower of flowers) {
+    const surrounding = getSurroundingCells(flower.position, grid)
+    const posSet = new Set(surrounding.map((p) => `${p.x},${p.y}`))
+
+    for (const target of monsters) {
+      if (target.type !== 'gajigajimushi') continue
+      if (deadIds.has(target.id)) continue
+
+      const key = `${target.position.x},${target.position.y}`
+      if (!posSet.has(key)) continue
+
+      // Accumulate damage
+      const prevDamage = damageMap.get(target.id) ?? 0
+      damageMap.set(target.id, prevDamage + MOYOMOYO_DAMAGE)
+
+      events.push({
+        type: 'MOYOMOYO_ATTACK',
+        attackerId: flower.id,
+        targetId: target.id,
+        damage: MOYOMOYO_DAMAGE,
+        position: { ...target.position },
+      })
+
+      // Check if accumulated damage kills the target
+      const totalDamage = prevDamage + MOYOMOYO_DAMAGE
+      if (target.life - totalDamage <= 0) {
+        deadIds.add(target.id)
+      }
+    }
+  }
+
+  // Apply damage and handle deaths
+  let currentGrid = grid
+  const survivingMonsters: Monster[] = []
+
+  for (const m of monsters) {
+    const damage = damageMap.get(m.id)
+    if (damage === undefined) {
+      survivingMonsters.push(m)
+      continue
+    }
+
+    const newLife = m.life - damage
+    if (newLife <= 0) {
+      // Dead - release nutrients
+      events.push({ type: 'MONSTER_DIED', monster: m, cause: 'starvation' })
+      currentGrid = releaseNutrientsOnDeath(m, currentGrid)
+    } else {
+      survivingMonsters.push({ ...m, life: newLife })
+    }
+  }
+
+  return { monsters: survivingMonsters, grid: currentGrid }
+}
+
+/**
  * Process phase transitions for all monsters
  * Called after life decrease/death in tick()
  */
@@ -290,11 +370,19 @@ export function processPhaseTransitions(state: GameState): {
     currentGrid = result.grid
   }
 
+  // Apply moyomoyo attacks from flower-phase Nijirigoke
+  const allMonsters = [...updatedMonsters, ...newMonsters]
+  const moyomoyoResult = applyMoyomoyoAttacks(allMonsters, currentGrid, events)
+
+  // Separate new monsters from the result (for the newMonsters return field)
+  const moyomoyoNewIds = new Set(newMonsters.map((m) => m.id))
+  const finalNew = moyomoyoResult.monsters.filter((m) => moyomoyoNewIds.has(m.id))
+
   return {
-    monsters: [...updatedMonsters, ...newMonsters],
-    grid: currentGrid,
+    monsters: moyomoyoResult.monsters,
+    grid: moyomoyoResult.grid,
     events,
-    newMonsters,
+    newMonsters: finalNew,
     nextMonsterId: idCounter.value,
   }
 }
@@ -481,7 +569,7 @@ function processGajigajimushiPhase(
   if (
     phase === 'adult' &&
     monster.carryingNutrient >= PUPA_NUTRIENT_THRESHOLD &&
-    monster.life > 10
+    monster.life > GAJI_REPRO_LIFE_THRESHOLD
   ) {
     const surroundingCells = getSurroundingCells(monster.position, grid)
     const emptyCells = surroundingCells.filter(
@@ -522,7 +610,7 @@ function processGajigajimushiPhase(
         monster: {
           ...monster,
           carryingNutrient: monster.carryingNutrient - childNutrients,
-          life: monster.life - 5,
+          life: monster.life - GAJI_REPRO_LIFE_COST,
         },
         grid,
       }

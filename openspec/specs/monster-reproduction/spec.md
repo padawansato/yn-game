@@ -37,13 +37,12 @@ A withered Nijirigoke SHALL produce offspring by distributing its nutrients amon
 An adult Gajigajimushi SHALL produce a larva offspring when nutrition and life conditions are met.
 
 #### Scenario: Reproduction condition
-- **WHEN** a Gajigajimushi in 'adult' phase has carryingNutrient >= PUPA_NUTRIENT_THRESHOLD AND life > 10
+- **WHEN** a Gajigajimushi in 'adult' phase has carryingNutrient >= PUPA_NUTRIENT_THRESHOLD AND life > GAJI_REPRO_LIFE_THRESHOLD
 - **THEN** it SHALL produce 1 larva at an adjacent empty cell
-- **NOTE**: Currently reuses PUPA_NUTRIENT_THRESHOLD and hardcoded life threshold. Dedicated GAJI_REPRO_* constants planned for a future change.
 
 #### Scenario: Reproduction cost
 - **WHEN** a Gajigajimushi reproduces
-- **THEN** the parent's carryingNutrient SHALL decrease by half (floor(carryingNutrient/2)) AND life SHALL decrease by 5
+- **THEN** the parent's carryingNutrient SHALL decrease by half (floor(carryingNutrient/2)) AND life SHALL decrease by GAJI_REPRO_LIFE_COST
 
 #### Scenario: Offspring initial state
 - **WHEN** a Gajigajimushi larva is created from reproduction

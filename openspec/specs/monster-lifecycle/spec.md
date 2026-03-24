@@ -51,10 +51,11 @@ A Nijirigoke bud SHALL transition to 'flower' when it accumulates enough nutrien
 - **WHEN** a Nijirigoke is in 'flower' phase
 - **THEN** it SHALL NOT move (fixed position)
 
-#### Scenario: Flower attack capability (FUTURE)
-- **WHEN** a Nijirigoke is in 'flower' phase
-- **THEN** it SHALL be able to launch ranged attacks ("moyomoyo") at nearby enemies
-- **NOTE**: Not yet implemented. Planned for a future change.
+#### Scenario: Flower attack capability
+- **WHEN** a Nijirigoke is in 'flower' phase during a tick
+- **THEN** it SHALL deal MOYOMOYO_DAMAGE (2) to all gajigajimushi within surrounding 9 cells (8 adjacent + center)
+- **AND** a MOYOMOYO_ATTACK event SHALL be emitted for each hit
+- **AND** if a target's life reaches 0 or below, it SHALL die and release nutrients per conservation law
 
 #### Scenario: Flower life decay
 - **WHEN** a Nijirigoke is in 'flower' phase
@@ -112,10 +113,11 @@ A Lizardman SHALL construct a nest when it finds a suitable open space.
 - **WHEN** a Lizardman has carryingNutrient < NEST_NUTRIENT_COST OR life <= NEST_LIFE_COST
 - **THEN** it SHALL NOT establish a nest and SHALL continue using straight movement fallback
 
-#### Scenario: Shared nests (FUTURE)
-- **WHEN** a Lizardman encounters another Lizardman's nest
-- **THEN** it MAY use that nest for laying eggs (nest is shared among Lizardmen)
-- **NOTE**: Not yet implemented. Planned for a future change.
+#### Scenario: Shared nests
+- **WHEN** a Lizardman cannot afford to build its own nest (insufficient nutrients or life)
+- **AND** another Lizardman already has a nest established
+- **THEN** it SHALL adopt that nest (copy nestPosition and nestOrientation) at no cost
+- **AND** the Lizardman SHALL prefer building its own nest when affordable
 
 ### Requirement: Lizardman lifecycle - laying transition
 A Lizardman with a nest SHALL transition to 'laying' when nutrition conditions are met.
@@ -135,11 +137,6 @@ A Lizardman with a nest SHALL transition to 'laying' when nutrition conditions a
 #### Scenario: Laying pickaxe immunity (FUTURE)
 - **WHEN** a Lizardman in 'laying' phase is hit by the pickaxe
 - **THEN** the pickaxe attack SHALL be ignored (no damage)
-- **NOTE**: Not yet implemented. Planned for a future change.
-
-#### Scenario: Laying interruption by attack (FUTURE)
-- **WHEN** a Lizardman in 'laying' phase is attacked by an adjacent physical attacker (combat, not pickaxe)
-- **THEN** laying SHALL be interrupted and the Lizardman SHALL return to 'normal' phase
 - **NOTE**: Not yet implemented. Planned for a future change.
 
 ### Requirement: Lizardman lifecycle - egg phase

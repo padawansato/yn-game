@@ -192,6 +192,7 @@ const IMPORTANT_EVENT_TYPES = new Set([
   'EGG_HATCHED',
   'MONSTER_REPRODUCED',
   'MONSTER_SPAWNED',
+  'MOYOMOYO_ATTACK',
 ])
 
 /**
@@ -232,6 +233,9 @@ export function renderEvents(events: GameEvent[]): string[] {
         break
       case 'MONSTER_SPAWNED':
         lines.push(`>> SPAWNED: ${event.monster.id} ${event.monster.type}`)
+        break
+      case 'MOYOMOYO_ATTACK':
+        lines.push(`>> MOYOMOYO: ${event.attackerId} hit ${event.targetId} (dmg=${event.damage})`)
         break
     }
   }

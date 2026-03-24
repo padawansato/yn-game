@@ -375,6 +375,93 @@ describe('Stationary Movement', () => {
       expect(result.direction).toBe('up')
     })
 
+    it('should adopt existing lizardman nest when cannot afford own', () => {
+      const grid = createGrid(8, 8, 'empty')
+      const poorLizardman = createMonster({
+        id: 'poor-lz',
+        position: { x: 3, y: 3 },
+        nestPosition: null,
+        nestOrientation: null,
+        carryingNutrient: 5, // < NEST_NUTRIENT_COST
+        life: 80,
+      })
+
+      const richLizardman = createMonster({
+        id: 'rich-lz',
+        position: { x: 6, y: 6 },
+        nestPosition: { x: 5, y: 5 },
+        nestOrientation: 'horizontal' as const,
+        carryingNutrient: 20,
+        life: 80,
+      })
+
+      const result = calculateStationaryMove(poorLizardman, grid, [poorLizardman, richLizardman], () => 0)
+
+      expect(result.nestPosition).toEqual({ x: 5, y: 5 })
+      expect(result.nestOrientation).toBe('horizontal')
+      expect(result.position).toEqual({ x: 3, y: 3 }) // stays in place
+    })
+
+    it('should prefer building own nest when affordable', () => {
+      const grid = createGrid(8, 8, 'empty')
+      const richLizardman = createMonster({
+        id: 'rich-lz',
+        position: { x: 3, y: 3 },
+        nestPosition: null,
+        nestOrientation: null,
+        carryingNutrient: NEST_NUTRIENT_COST,
+        life: NEST_LIFE_COST + 1,
+      })
+
+      const otherLizardman = createMonster({
+        id: 'other-lz',
+        position: { x: 6, y: 6 },
+        nestPosition: { x: 5, y: 5 },
+        nestOrientation: 'horizontal' as const,
+      })
+
+      const result = calculateStationaryMove(richLizardman, grid, [richLizardman, otherLizardman], () => 0)
+
+      // Should build own nest, NOT adopt the other's
+      expect(result.nestPosition).not.toEqual({ x: 5, y: 5 })
+      expect(result.nestPosition).not.toBeNull()
+    })
+
+    it('should not adopt nest from non-lizardman', () => {
+      const grid = createGrid(8, 8, 'empty')
+      const poorLizardman = createMonster({
+        id: 'poor-lz',
+        position: { x: 1, y: 1 },
+        nestPosition: null,
+        nestOrientation: null,
+        carryingNutrient: 5,
+        life: 80,
+      })
+
+      // A non-lizardman monster that happens to have nest fields set
+      const nonLizardman: Monster = {
+        id: 'gaji-1',
+        type: 'gajigajimushi',
+        position: { x: 6, y: 6 },
+        direction: 'right',
+        pattern: 'refraction',
+        phase: 'larva' as const,
+        phaseTickCounter: 0,
+        life: 10,
+        maxLife: 10,
+        attack: 3,
+        predationTargets: ['nijirigoke'],
+        carryingNutrient: 0,
+        nestPosition: { x: 5, y: 5 },
+        nestOrientation: 'horizontal' as const,
+      }
+
+      const result = calculateStationaryMove(poorLizardman, grid, [poorLizardman, nonLizardman], () => 0)
+
+      // Should NOT adopt the gajigajimushi's nest, should fall back to straight movement
+      expect(result.nestPosition).toBeNull()
+    })
+
     it('should not chase prey when not hungry', () => {
       const grid = createGrid(10, 10, 'empty')
       const lizardman = createMonster({
