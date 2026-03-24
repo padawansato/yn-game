@@ -116,8 +116,8 @@ git worktree remove ../yn-game-<feature-name>
 
 ### ブランチ保護とCI
 - mainブランチは `build-and-test` CIジョブの通過が必須（ブランチ保護）
-- **コード変更**（`src/`, `.github/`, `package.json` 等）は必ずPR経由でマージ
-- **OpenSpecメタデータのみ**（archive, spec sync等）はmainに直接push可（CIは不要、`enforce_admins: false`）
+- **全ての変更はPR経由でマージ**（OpenSpecメタデータ含む）
+- mainへの直接pushは禁止（`enforce_admins: true`）
 - マージ前に `gh pr checks <PR番号>` でCI状態を確認すること
 
 ### Git Commit
@@ -125,7 +125,7 @@ Git CZ 風 commit メッセージフォーマット
 
 ### OpenSpecとの連携
 - changeごとにfeatureブランチ: `feature/food-chain-system`
-- アーカイブ時はmainに直接push（コード変更を含まないため）
+- アーカイブ時もPR経由（全変更をPR経由に統一）
 
 ## OpenSpec (opsx) ワークフロー
 
