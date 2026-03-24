@@ -112,14 +112,20 @@ git worktree remove ../yn-game-<feature-name>
 ### ワークフロー
 1. `main` から `feature/<name>` を作成
 2. 実装 → コミット → push
-3. PR作成 → セルフレビュー → mainへマージ
+3. PR作成 → CI通過確認 → mainへマージ
+
+### ブランチ保護とCI
+- mainブランチは `build-and-test` CIジョブの通過が必須（ブランチ保護）
+- **コード変更**（`src/`, `.github/`, `package.json` 等）は必ずPR経由でマージ
+- **OpenSpecメタデータのみ**（archive, spec sync等）はmainに直接push可（CIは不要、`enforce_admins: false`）
+- マージ前に `gh pr checks <PR番号>` でCI状態を確認すること
 
 ### Git Commit
 Git CZ 風 commit メッセージフォーマット
 
 ### OpenSpecとの連携
 - changeごとにfeatureブランチ: `feature/food-chain-system`
-- アーカイブ時にmainへマージ
+- アーカイブ時はmainに直接push（コード変更を含まないため）
 
 ## OpenSpec (opsx) ワークフロー
 
