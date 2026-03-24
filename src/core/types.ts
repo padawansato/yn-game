@@ -70,3 +70,4 @@ export type GameEvent =
   | { type: 'MONSTER_REPRODUCED'; parentId: string; offspringIds: string[]; positions: Position[] }
   | { type: 'EGG_LAID'; parentId: string; eggId: string; position: Position }
   | { type: 'EGG_HATCHED'; offspringId: string; position: Position }
+  | { type: 'MOYOMOYO_ATTACK'; attackerId: string; targetId: string; damage: number; position: Position }

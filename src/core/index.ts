@@ -37,6 +37,9 @@ export {
   EGG_HATCH_DURATION,
   NEST_NUTRIENT_COST,
   NEST_LIFE_COST,
+  GAJI_REPRO_LIFE_THRESHOLD,
+  GAJI_REPRO_LIFE_COST,
+  MOYOMOYO_DAMAGE,
 } from './constants'
 export type { MonsterConfig } from './constants'
 
@@ -87,6 +90,7 @@ export {
   attackMonster,
   processPhaseTransitions,
   processNestEstablishment,
+  applyMoyomoyoAttacks,
 } from './simulation'
 
 // Game Loop

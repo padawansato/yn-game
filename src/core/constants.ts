@@ -88,3 +88,10 @@ export const EGG_HATCH_DURATION = 20 // egg → hatch: ticks to wait
 // Nest building cost
 export const NEST_NUTRIENT_COST = 14   // nutrients consumed when building a nest
 export const NEST_LIFE_COST = 2        // life consumed when building a nest
+
+// Gajigajimushi reproduction
+export const GAJI_REPRO_LIFE_THRESHOLD = 10  // minimum life to reproduce
+export const GAJI_REPRO_LIFE_COST = 5        // life cost per reproduction
+
+// Moyomoyo (flower ranged attack)
+export const MOYOMOYO_DAMAGE = 2  // flower ranged attack damage per tick

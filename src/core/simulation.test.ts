@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { Cell, GameState, Monster } from './types'
+import type { Cell, GameEvent, GameState, Monster } from './types'
 import {
   calculateAllMoves,
   resolveConflicts,
@@ -13,6 +13,7 @@ import {
   createGameState as createInitialGameState,
   attackMonster,
   processPhaseTransitions,
+  applyMoyomoyoAttacks,
 } from './simulation'
 import {
   INITIAL_DIG_POWER,
@@ -25,6 +26,7 @@ import {
   EGG_HATCH_DURATION,
   NEST_NUTRIENT_COST,
   NEST_LIFE_COST,
+  MOYOMOYO_DAMAGE,
 } from './constants'
 import { getTotalNutrients } from './nutrient'
 
@@ -1288,6 +1290,156 @@ describe('Simulation', () => {
 
       expect(result.monsters[0].carryingNutrient).toBe(20)
       expect(result.monsters[0].life).toBe(60)
+    })
+  })
+
+  describe('applyMoyomoyoAttacks', () => {
+    it('should deal damage to adjacent gajigajimushi', () => {
+      const grid = createGrid(5, 5)
+      const flower = createMonster({
+        id: 'flower-1',
+        type: 'nijirigoke',
+        phase: 'flower',
+        position: { x: 2, y: 2 },
+        life: 5,
+        carryingNutrient: 10,
+      })
+      const gaji = createMonster({
+        id: 'gaji-1',
+        type: 'gajigajimushi',
+        phase: 'larva',
+        position: { x: 3, y: 2 },
+        life: 30,
+        maxLife: 30,
+        attack: 3,
+        predationTargets: ['nijirigoke'],
+      })
+
+      const events: GameEvent[] = []
+      const result = applyMoyomoyoAttacks([flower, gaji], grid, events)
+
+      const updatedGaji = result.monsters.find((m) => m.id === 'gaji-1')
+      expect(updatedGaji).toBeDefined()
+      expect(updatedGaji!.life).toBe(30 - MOYOMOYO_DAMAGE)
+
+      const attackEvents = events.filter((e) => e.type === 'MOYOMOYO_ATTACK')
+      expect(attackEvents).toHaveLength(1)
+      expect(attackEvents[0]).toMatchObject({
+        type: 'MOYOMOYO_ATTACK',
+        attackerId: 'flower-1',
+        targetId: 'gaji-1',
+        damage: MOYOMOYO_DAMAGE,
+      })
+    })
+
+    it('should kill gajigajimushi when life reaches 0 and release nutrients', () => {
+      const grid = createGrid(5, 5)
+      const flower = createMonster({
+        id: 'flower-1',
+        type: 'nijirigoke',
+        phase: 'flower',
+        position: { x: 2, y: 2 },
+        life: 5,
+        carryingNutrient: 10,
+      })
+      const gaji = createMonster({
+        id: 'gaji-1',
+        type: 'gajigajimushi',
+        phase: 'larva',
+        position: { x: 3, y: 2 },
+        life: 1, // Will die from MOYOMOYO_DAMAGE (2)
+        maxLife: 30,
+        attack: 3,
+        predationTargets: ['nijirigoke'],
+        carryingNutrient: 4,
+      })
+
+      const events: GameEvent[] = []
+      const result = applyMoyomoyoAttacks([flower, gaji], grid, events)
+
+      // Gaji should be removed
+      const updatedGaji = result.monsters.find((m) => m.id === 'gaji-1')
+      expect(updatedGaji).toBeUndefined()
+
+      // Should have MONSTER_DIED event
+      const deathEvents = events.filter((e) => e.type === 'MONSTER_DIED')
+      expect(deathEvents).toHaveLength(1)
+
+      // Nutrients should be released to grid (conservation law)
+      const totalGridNutrients = result.grid.flat().reduce((sum, c) => sum + c.nutrientAmount, 0)
+      expect(totalGridNutrients).toBe(4) // gaji's carryingNutrient released
+    })
+
+    it('should NOT affect gajigajimushi outside 9-cell range', () => {
+      const grid = createGrid(7, 7)
+      const flower = createMonster({
+        id: 'flower-1',
+        type: 'nijirigoke',
+        phase: 'flower',
+        position: { x: 2, y: 2 },
+        life: 5,
+        carryingNutrient: 10,
+      })
+      // Position (5, 2) is 3 cells away - outside 9-cell range
+      const farGaji = createMonster({
+        id: 'gaji-far',
+        type: 'gajigajimushi',
+        phase: 'larva',
+        position: { x: 5, y: 2 },
+        life: 30,
+        maxLife: 30,
+        attack: 3,
+        predationTargets: ['nijirigoke'],
+      })
+
+      const events: GameEvent[] = []
+      const result = applyMoyomoyoAttacks([flower, farGaji], grid, events)
+
+      const updatedGaji = result.monsters.find((m) => m.id === 'gaji-far')
+      expect(updatedGaji).toBeDefined()
+      expect(updatedGaji!.life).toBe(30) // No damage
+
+      const attackEvents = events.filter((e) => e.type === 'MOYOMOYO_ATTACK')
+      expect(attackEvents).toHaveLength(0)
+    })
+
+    it('should NOT affect non-gajigajimushi monsters', () => {
+      const grid = createGrid(5, 5)
+      const flower = createMonster({
+        id: 'flower-1',
+        type: 'nijirigoke',
+        phase: 'flower',
+        position: { x: 2, y: 2 },
+        life: 5,
+        carryingNutrient: 10,
+      })
+      const lizard = createMonster({
+        id: 'liz-1',
+        type: 'lizardman',
+        phase: 'normal',
+        position: { x: 3, y: 2 },
+        life: 80,
+        maxLife: 80,
+        attack: 8,
+        predationTargets: ['nijirigoke', 'gajigajimushi'],
+      })
+      // Another nijirigoke should also not be targeted
+      const otherKoke = createMonster({
+        id: 'koke-2',
+        type: 'nijirigoke',
+        phase: 'mobile',
+        position: { x: 1, y: 2 },
+        life: 10,
+      })
+
+      const events: GameEvent[] = []
+      const result = applyMoyomoyoAttacks([flower, lizard, otherKoke], grid, events)
+
+      expect(result.monsters.find((m) => m.id === 'liz-1')!.life).toBe(80)
+      expect(result.monsters.find((m) => m.id === 'koke-2')!.life).toBe(10)
+
+      const attackEvents = events.filter((e) => e.type === 'MOYOMOYO_ATTACK')
+      expect(attackEvents).toHaveLength(0)
     })
   })
 })

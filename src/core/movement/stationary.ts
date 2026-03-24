@@ -375,7 +375,20 @@ export function calculateStationaryMove(
       }
     }
 
-    // Cannot establish nest - use straight pattern fallback
+    // Try to share another lizardman's nest (no cost)
+    const existingNest = monsters.find(
+      m => m.id !== monster.id && m.type === 'lizardman' && m.nestPosition !== null && m.nestOrientation !== null
+    )
+    if (existingNest) {
+      return {
+        position: monster.position,
+        direction: monster.direction,
+        nestPosition: existingNest.nestPosition!,
+        nestOrientation: existingNest.nestOrientation,
+      }
+    }
+
+    // Cannot establish or share nest - use straight pattern fallback
     return straightFallback(monster, grid, randomFn)
   }
 
