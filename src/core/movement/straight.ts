@@ -29,9 +29,11 @@ export function isValidMove(position: Position, grid: Cell[][]): boolean {
 /**
  * Get turn directions relative to current direction
  */
-export function getTurnDirections(
-  direction: Direction
-): { left: Direction; right: Direction; back: Direction } {
+export function getTurnDirections(direction: Direction): {
+  left: Direction
+  right: Direction
+  back: Direction
+} {
   const turns: Record<Direction, { left: Direction; right: Direction; back: Direction }> = {
     up: { left: 'left', right: 'right', back: 'down' },
     down: { left: 'right', right: 'left', back: 'up' },

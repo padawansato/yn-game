@@ -10,12 +10,24 @@ import {
   dig,
   isAdjacentToEmpty,
   createGameState as createInitialGameState,
+  attackMonster,
+  processPhaseTransitions,
 } from './simulation'
-import { INITIAL_DIG_POWER } from './constants'
+import {
+  INITIAL_DIG_POWER,
+  PICKAXE_DAMAGE,
+  BUD_NUTRIENT_THRESHOLD,
+  BUD_LIFE_THRESHOLD,
+  FLOWER_NUTRIENT_THRESHOLD,
+  PUPA_NUTRIENT_THRESHOLD,
+  PUPA_DURATION,
+  EGG_HATCH_DURATION,
+} from './constants'
+import { getTotalNutrients } from './nutrient'
 
 function createGrid(width: number, height: number, type: Cell['type'] = 'empty'): Cell[][] {
   return Array.from({ length: height }, () =>
-    Array.from({ length: width }, () => ({ type, nutrientAmount: 0 }))
+    Array.from({ length: width }, () => ({ type, nutrientAmount: 0, magicAmount: 0 }))
   )
 }
 
@@ -26,12 +38,15 @@ function createMonster(overrides: Partial<Monster> = {}): Monster {
     position: { x: 2, y: 2 },
     direction: 'right',
     pattern: 'straight',
+    phase: 'mobile' as const,
+    phaseTickCounter: 0,
     life: 10,
     maxLife: 10,
     attack: 0,
     predationTargets: [],
     carryingNutrient: 0,
     nestPosition: null,
+    nestOrientation: null,
     ...overrides,
   }
 }
@@ -49,7 +64,6 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
 }
 
 describe('Simulation', () => {
-
   describe('calculateAllMoves', () => {
     it('should calculate moves for all monsters', () => {
       const monster1 = createMonster({ id: 'm1', position: { x: 2, y: 2 } })
@@ -72,6 +86,7 @@ describe('Simulation', () => {
             position: { x: 3, y: 2 },
             direction: 'right' as const,
             nestPosition: null,
+            nestOrientation: null,
           },
         },
       ]
@@ -92,6 +107,7 @@ describe('Simulation', () => {
             position: { x: 2, y: 2 },
             direction: 'right' as const,
             nestPosition: null,
+            nestOrientation: null,
           },
         },
         {
@@ -100,6 +116,7 @@ describe('Simulation', () => {
             position: { x: 2, y: 2 },
             direction: 'left' as const,
             nestPosition: null,
+            nestOrientation: null,
           },
         },
       ]
@@ -140,6 +157,7 @@ describe('Simulation', () => {
             position: { x: 2, y: 2 },
             direction: 'right' as const,
             nestPosition: null,
+            nestOrientation: null,
           },
         },
         {
@@ -148,6 +166,7 @@ describe('Simulation', () => {
             position: { x: 2, y: 2 },
             direction: 'left' as const,
             nestPosition: null,
+            nestOrientation: null,
           },
         },
         {
@@ -156,6 +175,7 @@ describe('Simulation', () => {
             position: { x: 2, y: 2 },
             direction: 'up' as const,
             nestPosition: null,
+            nestOrientation: null,
           },
         },
       ]
@@ -178,15 +198,15 @@ describe('Simulation', () => {
       const moves = [
         {
           monster: m1,
-          result: { position: { x: 2, y: 2 }, direction: 'right' as const, nestPosition: null },
+          result: { position: { x: 2, y: 2 }, direction: 'right' as const, nestPosition: null, nestOrientation: null },
         },
         {
           monster: m2,
-          result: { position: { x: 2, y: 2 }, direction: 'left' as const, nestPosition: null },
+          result: { position: { x: 2, y: 2 }, direction: 'left' as const, nestPosition: null, nestOrientation: null },
         },
         {
           monster: m3,
-          result: { position: { x: 2, y: 2 }, direction: 'up' as const, nestPosition: null },
+          result: { position: { x: 2, y: 2 }, direction: 'up' as const, nestPosition: null, nestOrientation: null },
         },
       ]
 
@@ -217,6 +237,7 @@ describe('Simulation', () => {
             position: { x: 2, y: 2 },
             direction: 'right' as const,
             nestPosition: null,
+            nestOrientation: null,
           },
         },
         {
@@ -225,6 +246,7 @@ describe('Simulation', () => {
             position: { x: 2, y: 2 },
             direction: 'left' as const,
             nestPosition: null,
+            nestOrientation: null,
           },
         },
       ]
@@ -248,6 +270,7 @@ describe('Simulation', () => {
             position: { x: 3, y: 2 },
             direction: 'right' as const,
             nestPosition: null,
+            nestOrientation: null,
           },
         },
       ]
@@ -346,12 +369,13 @@ describe('Simulation', () => {
       const result = decreaseLifeForMoved([monster], original, grid)
 
       expect(result.monsters).toHaveLength(0)
-      // Nutrients distributed to adjacent soil cells
+      // Nutrients distributed to surrounding 9 cells (conservation law)
       let releasedTotal = 0
-      releasedTotal += result.grid[1][3].nutrientAmount // up
-      releasedTotal += result.grid[3][3].nutrientAmount // down
-      releasedTotal += result.grid[2][2].nutrientAmount // left
-      releasedTotal += result.grid[2][4].nutrientAmount // right
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          releasedTotal += result.grid[2 + dy][3 + dx].nutrientAmount
+        }
+      }
       expect(releasedTotal).toBe(8)
     })
   })
@@ -577,7 +601,7 @@ describe('Simulation', () => {
   describe('dig', () => {
     it('should spawn Nijirigoke when digging soil with nutrients adjacent to empty', () => {
       const grid = createGrid(10, 10, 'soil')
-      grid[5][5].nutrientAmount = 5  // 1-9 spawns nijirigoke
+      grid[5][5].nutrientAmount = 5 // 1-9 spawns nijirigoke
       grid[5][4].type = 'empty' // adjacent empty cell
       const state = createGameState({ grid })
 
@@ -632,9 +656,9 @@ describe('Simulation', () => {
       }
     })
 
-    it('should spawn monster with maxLife and carry depleted nutrients', () => {
+    it('should spawn monster with nutrient-based life and carry remaining nutrients', () => {
       const grid = createGrid(10, 10, 'soil')
-      grid[5][5].nutrientAmount = 9  // 9 * 0.7 = 6.3 -> floor = 6
+      grid[5][5].nutrientAmount = 9 // nijirigoke: life=min(9,16)=9, remaining=0
       grid[5][4].type = 'empty' // adjacent empty cell
       const state = createGameState({ grid })
 
@@ -642,10 +666,9 @@ describe('Simulation', () => {
 
       expect('error' in result).toBe(false)
       if (!('error' in result)) {
-        // depleteOnDig(9) = floor(9 * 0.7) = 6
-        // life = config.life = 16, carryingNutrient = min(6, 10) = 6
-        expect(result.state.monsters[0].life).toBe(16)
-        expect(result.state.monsters[0].carryingNutrient).toBe(6)
+        // life = min(nutrients, maxLife) = min(9, 16) = 9
+        expect(result.state.monsters[0].life).toBe(9)
+        expect(result.state.monsters[0].carryingNutrient).toBe(0)
       }
     })
 
@@ -719,9 +742,9 @@ describe('Simulation', () => {
       }
     })
 
-    it('should spawn nijirigoke with maxLife and carryingNutrient from depleted nutrients', () => {
+    it('should spawn nijirigoke with nutrient-based life', () => {
       const grid = createGrid(10, 10, 'soil')
-      grid[5][5].nutrientAmount = 5  // depleteOnDig(5) = floor(5 * 0.7) = 3
+      grid[5][5].nutrientAmount = 5 // nijirigoke: life=min(5,16)=5, remaining=0
       grid[5][4].type = 'empty'
       const state = createGameState({ grid })
 
@@ -729,14 +752,14 @@ describe('Simulation', () => {
 
       expect('error' in result).toBe(false)
       if (!('error' in result)) {
-        expect(result.state.monsters[0].life).toBe(16) // maxLife
-        expect(result.state.monsters[0].carryingNutrient).toBe(3)
+        expect(result.state.monsters[0].life).toBe(5) // min(nutrients, maxLife)
+        expect(result.state.monsters[0].carryingNutrient).toBe(0)
       }
     })
 
-    it('should spawn gajigajimushi with maxLife and no carryingNutrient', () => {
+    it('should spawn gajigajimushi with nutrient-based life', () => {
       const grid = createGrid(10, 10, 'soil')
-      grid[5][5].nutrientAmount = 10  // spawns gajigajimushi
+      grid[5][5].nutrientAmount = 10 // spawns gajigajimushi: life=min(10,30)=10, remaining=0
       grid[5][4].type = 'empty'
       const state = createGameState({ grid })
 
@@ -744,14 +767,17 @@ describe('Simulation', () => {
 
       expect('error' in result).toBe(false)
       if (!('error' in result)) {
-        expect(result.state.monsters[0].life).toBe(30) // gajigajimushi maxLife
-        expect(result.state.monsters[0].carryingNutrient).toBe(0) // canCarryNutrients: false
+        // life = min(nutrients, maxLife) = min(10, 30) = 10
+        expect(result.state.monsters[0].life).toBe(10)
+        expect(result.state.monsters[0].carryingNutrient).toBe(0)
       }
     })
 
-    it('should cap carryingNutrient at NUTRIENT_CARRY_CAPACITY', () => {
+    it('should cap carryingNutrient at NUTRIENT_CARRY_CAPACITY and distribute surplus', () => {
       const grid = createGrid(10, 10, 'soil')
-      grid[5][5].nutrientAmount = 9  // depleteOnDig(9) = 6, but nutrient < 10 → nijirigoke
+      // lizardman (nutrient >= 17): life=min(25,80)=25, remaining=0, carried=0
+      // Use nutrient=100 to test carry cap: life=min(100,80)=80, remaining=20, carried=min(20,10)=10, surplus=10
+      grid[5][5].nutrientAmount = 100
       grid[5][4].type = 'empty'
       const state = createGameState({ grid })
 
@@ -759,8 +785,10 @@ describe('Simulation', () => {
 
       expect('error' in result).toBe(false)
       if (!('error' in result)) {
-        // min(6, NUTRIENT_CARRY_CAPACITY=10) = 6
-        expect(result.state.monsters[0].carryingNutrient).toBe(6)
+        expect(result.state.monsters[0].type).toBe('lizardman')
+        expect(result.state.monsters[0].life).toBe(80) // min(100, 80) = 80
+        expect(result.state.monsters[0].carryingNutrient).toBe(10) // min(100-80, 10) = 10
+        // surplus 10 distributed to surrounding cells
       }
     })
 
@@ -836,6 +864,366 @@ describe('Simulation', () => {
       const state = createInitialGameState(10, 10)
 
       expect(state.digPower).toBe(INITIAL_DIG_POWER)
+    })
+  })
+
+  describe('attackMonster', () => {
+    it('should deal damage to monster', () => {
+      const grid = createGrid(5, 5, 'empty')
+      const monster = createMonster({ id: 'm1', life: 10, maxLife: 16 })
+      const state = createGameState({ grid, monsters: [monster] })
+
+      const result = attackMonster(state, 'm1', PICKAXE_DAMAGE)
+
+      expect('error' in result).toBe(false)
+      if (!('error' in result)) {
+        expect(result.state.monsters[0].life).toBe(10 - PICKAXE_DAMAGE)
+        expect(result.events).toContainEqual(
+          expect.objectContaining({
+            type: 'MONSTER_ATTACKED',
+            monsterId: 'm1',
+            damage: PICKAXE_DAMAGE,
+          })
+        )
+      }
+    })
+
+    it('should kill monster and release nutrients on death', () => {
+      const grid = createGrid(5, 5, 'soil')
+      grid[2][2].type = 'empty' // monster position
+      const monster = createMonster({
+        id: 'm1',
+        position: { x: 2, y: 2 },
+        life: 3,
+        maxLife: 16,
+        carryingNutrient: 8,
+      })
+      const state = createGameState({ grid, monsters: [monster] })
+
+      const result = attackMonster(state, 'm1', PICKAXE_DAMAGE)
+
+      expect('error' in result).toBe(false)
+      if (!('error' in result)) {
+        // Monster should be dead
+        expect(result.state.monsters).toHaveLength(0)
+
+        // Conservation: 8 nutrients should be distributed to surrounding cells
+        let totalNutrients = 0
+        for (const row of result.state.grid) {
+          for (const cell of row) {
+            totalNutrients += cell.nutrientAmount
+          }
+        }
+        expect(totalNutrients).toBe(8)
+
+        // Should have MONSTER_ATTACKED and MONSTER_DIED events
+        expect(result.events.some((e) => e.type === 'MONSTER_ATTACKED')).toBe(true)
+        expect(result.events.some((e) => e.type === 'MONSTER_DIED' && e.cause === 'pickaxe')).toBe(
+          true
+        )
+      }
+    })
+
+    it('should return error for non-existent monster', () => {
+      const grid = createGrid(5, 5, 'empty')
+      const state = createGameState({ grid })
+
+      const result = attackMonster(state, 'nonexistent', PICKAXE_DAMAGE)
+
+      expect('error' in result).toBe(true)
+      if ('error' in result) {
+        expect(result.error).toBe('Monster not found')
+      }
+    })
+
+    it('should not consume digPower', () => {
+      const grid = createGrid(5, 5, 'empty')
+      const monster = createMonster({ id: 'm1', life: 10 })
+      const state = createGameState({ grid, monsters: [monster], digPower: 50 })
+
+      const result = attackMonster(state, 'm1', PICKAXE_DAMAGE)
+
+      expect('error' in result).toBe(false)
+      if (!('error' in result)) {
+        expect(result.state.digPower).toBe(50) // unchanged
+      }
+    })
+  })
+
+  describe('processPhaseTransitions', () => {
+    describe('Nijirigoke lifecycle', () => {
+      it('should transition mobile → bud when conditions met', () => {
+        const grid = createGrid(5, 5, 'empty')
+        const monster = createMonster({
+          id: 'm1',
+          type: 'nijirigoke',
+          phase: 'mobile',
+          carryingNutrient: BUD_NUTRIENT_THRESHOLD,
+          life: BUD_LIFE_THRESHOLD,
+        })
+        const state = createGameState({ grid, monsters: [monster] })
+
+        const result = processPhaseTransitions(state)
+
+        expect(result.monsters[0].phase).toBe('bud')
+        expect(result.events.some((e) => e.type === 'PHASE_TRANSITION')).toBe(true)
+      })
+
+      it('should transition bud → flower when nutrients sufficient', () => {
+        const grid = createGrid(5, 5, 'empty')
+        const monster = createMonster({
+          id: 'm1',
+          type: 'nijirigoke',
+          phase: 'bud',
+          carryingNutrient: FLOWER_NUTRIENT_THRESHOLD,
+          life: 5,
+        })
+        const state = createGameState({ grid, monsters: [monster] })
+
+        const result = processPhaseTransitions(state)
+
+        expect(result.monsters[0].phase).toBe('flower')
+      })
+
+      it('should drain life in flower phase and transition to withered', () => {
+        const grid = createGrid(5, 5, 'empty')
+        const monster = createMonster({
+          id: 'm1',
+          type: 'nijirigoke',
+          phase: 'flower',
+          life: 2, // will die with 2x drain
+          carryingNutrient: 3,
+        })
+        const state = createGameState({ grid, monsters: [monster] })
+
+        const result = processPhaseTransitions(state)
+
+        expect(result.monsters[0].phase).toBe('withered')
+        expect(result.monsters[0].life).toBe(0)
+      })
+
+      it('should reproduce in withered phase and distribute nutrients', () => {
+        const grid = createGrid(5, 5, 'empty')
+        const monster = createMonster({
+          id: 'm1',
+          type: 'nijirigoke',
+          position: { x: 2, y: 2 },
+          phase: 'withered',
+          life: 0,
+          carryingNutrient: 10,
+        })
+        const state = createGameState({ grid, monsters: [monster] })
+
+        const result = processPhaseTransitions(state)
+
+        // Parent should be dead (filtered out)
+        const parents = result.monsters.filter((m) => m.id === 'm1')
+        expect(parents).toHaveLength(0)
+
+        // Offspring should exist
+        const offspring = result.monsters.filter((m) => m.id !== 'm1')
+        expect(offspring.length).toBeGreaterThan(0)
+        expect(offspring.length).toBeLessThanOrEqual(5)
+
+        // Conservation: total offspring nutrients = parent's nutrients
+        const totalNutrients = offspring.reduce((sum, m) => sum + m.carryingNutrient, 0)
+        expect(totalNutrients).toBe(10)
+      })
+    })
+
+    describe('Gajigajimushi lifecycle', () => {
+      it('should transition larva → pupa', () => {
+        const grid = createGrid(5, 5, 'empty')
+        const monster = createMonster({
+          id: 'm1',
+          type: 'gajigajimushi',
+          phase: 'larva',
+          pattern: 'refraction',
+          carryingNutrient: PUPA_NUTRIENT_THRESHOLD,
+        })
+        const state = createGameState({ grid, monsters: [monster] })
+
+        const result = processPhaseTransitions(state)
+
+        expect(result.monsters[0].phase).toBe('pupa')
+      })
+
+      it('should transition pupa → adult after duration', () => {
+        const grid = createGrid(5, 5, 'empty')
+        const monster = createMonster({
+          id: 'm1',
+          type: 'gajigajimushi',
+          phase: 'pupa',
+          pattern: 'refraction',
+          phaseTickCounter: PUPA_DURATION - 1,
+        })
+        const state = createGameState({ grid, monsters: [monster] })
+
+        const result = processPhaseTransitions(state)
+
+        expect(result.monsters[0].phase).toBe('adult')
+      })
+    })
+
+    describe('Lizardman lifecycle', () => {
+      it('should transition to egg phase and then hatch', () => {
+        const grid = createGrid(5, 5, 'empty')
+        const egg = createMonster({
+          id: 'egg1',
+          type: 'lizardman',
+          phase: 'egg',
+          pattern: 'stationary',
+          phaseTickCounter: EGG_HATCH_DURATION - 1,
+          life: 1,
+          maxLife: 1,
+          carryingNutrient: 5,
+        })
+        const state = createGameState({ grid, monsters: [egg] })
+
+        const result = processPhaseTransitions(state)
+
+        expect(result.monsters[0].phase).toBe('normal')
+        expect(result.monsters[0].life).toBe(80) // lizardman config life
+        expect(result.monsters[0].carryingNutrient).toBe(5) // preserved
+        expect(result.events.some((e) => e.type === 'EGG_HATCHED')).toBe(true)
+      })
+    })
+
+    describe('Immobile phase movement', () => {
+      it('should not move monsters in immobile phases', () => {
+        const grid = createGrid(5, 5, 'empty')
+        const monster = createMonster({
+          id: 'm1',
+          type: 'nijirigoke',
+          position: { x: 2, y: 2 },
+          phase: 'bud',
+          direction: 'right',
+        })
+        const state = createGameState({ grid, monsters: [monster] })
+
+        const result = tick(state)
+
+        // Bud should not move
+        expect(result.state.monsters[0].position).toEqual({ x: 2, y: 2 })
+      })
+    })
+  })
+
+  describe('Bug fixes (review findings)', () => {
+    describe('Conservation violation: nijirigoke movement cost', () => {
+      it('should deposit 1 nutrient to origin cell when nijirigoke moves (not lose it)', () => {
+        const grid = createGrid(10, 10)
+        // Place nijirigoke at (2,2) with carryingNutrient=5, moving right to (3,2)
+        const monster = createMonster({
+          id: 'niji-1',
+          position: { x: 2, y: 2 },
+          direction: 'right',
+          carryingNutrient: 5,
+          life: 10,
+        })
+        const state = createGameState({ grid, monsters: [monster] })
+
+        const before = getTotalNutrients(state)
+        const result = tick(state)
+        const after = getTotalNutrients(result.state)
+
+        // Conservation law: total nutrients must not change
+        expect(after).toBe(before)
+      })
+    })
+
+    describe('ID duplication: multiple reproductions in same tick', () => {
+      it('should assign unique IDs when multiple nijirigoke reproduce in same tick', () => {
+        const grid = createGrid(10, 10)
+        // Two withered nijirigoke ready to reproduce
+        const m1 = createMonster({
+          id: 'niji-1',
+          position: { x: 2, y: 2 },
+          phase: 'withered',
+          phaseTickCounter: 0,
+          carryingNutrient: 3,
+          life: 0,
+        })
+        const m2 = createMonster({
+          id: 'niji-2',
+          position: { x: 6, y: 6 },
+          phase: 'withered',
+          phaseTickCounter: 0,
+          carryingNutrient: 3,
+          life: 0,
+        })
+        const state = createGameState({ grid, monsters: [m1, m2], nextMonsterId: 10 })
+
+        const result = processPhaseTransitions(state)
+        const allIds = result.monsters.map((m) => m.id)
+        const uniqueIds = new Set(allIds)
+
+        // All monster IDs must be unique
+        expect(uniqueIds.size).toBe(allIds.length)
+      })
+    })
+
+    describe('Withered nijirigoke: no empty cells available', () => {
+      it('should die and release nutrients when no empty cells for reproduction', () => {
+        // Grid entirely of soil (no empty cells around)
+        const grid = createGrid(10, 10, 'soil')
+        const monster = createMonster({
+          id: 'niji-1',
+          position: { x: 5, y: 5 },
+          phase: 'withered',
+          phaseTickCounter: 0,
+          carryingNutrient: 8,
+          life: 0,
+        })
+        const state = createGameState({ grid, monsters: [monster] })
+
+        const before = getTotalNutrients(state)
+        const result = processPhaseTransitions(state)
+
+        // Monster should die (removed from list)
+        const surviving = result.monsters.filter((m) => m.id === 'niji-1')
+        expect(surviving.length).toBe(0)
+
+        // Nutrients should be released to grid (conservation)
+        const afterState = createGameState({ grid: result.grid, monsters: result.monsters })
+        const after = getTotalNutrients(afterState)
+        expect(after).toBe(before)
+      })
+    })
+
+    describe('Dig: monsters receive nutrient-based life and carry excess', () => {
+      it('should give gajigajimushi nutrient-based life with excess as carryingNutrient', () => {
+        const grid = createGrid(10, 10, 'soil')
+        // gajigajimushi range: 10 <= nutrient < 17
+        // nutrient=16: life=min(16,30)=16, remaining=0, carried=0
+        grid[5][5].nutrientAmount = 16
+        grid[5][4].type = 'empty'
+        const state = createGameState({ grid })
+
+        const result = dig(state, { x: 5, y: 5 })
+
+        expect('error' in result).toBe(false)
+        if (!('error' in result)) {
+          expect(result.state.monsters[0].type).toBe('gajigajimushi')
+          expect(result.state.monsters[0].life).toBe(16)
+          expect(result.state.monsters[0].carryingNutrient).toBe(0)
+        }
+      })
+
+      it('should give lizardman nutrient-based life with excess as carryingNutrient', () => {
+        const grid = createGrid(10, 10, 'soil')
+        grid[5][5].nutrientAmount = 90 // spawns lizardman: life=min(90,80)=80, remaining=10, carried=10
+        grid[5][4].type = 'empty'
+        const state = createGameState({ grid })
+
+        const result = dig(state, { x: 5, y: 5 })
+
+        expect('error' in result).toBe(false)
+        if (!('error' in result)) {
+          expect(result.state.monsters[0].life).toBe(80)
+          expect(result.state.monsters[0].carryingNutrient).toBe(10)
+        }
+      })
     })
   })
 })

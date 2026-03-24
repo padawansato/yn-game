@@ -1,6 +1,5 @@
 import type { Cell, GameState, Monster, Position } from './types'
 import {
-  NUTRIENT_DEPLETION_RATIO,
   NUTRIENT_CARRY_CAPACITY,
   NUTRIENT_RELEASE_THRESHOLD,
   MAX_NUTRIENT_PER_CELL,
@@ -10,10 +9,7 @@ import {
  * Generate exponentially distributed random value
  * Most values will be low, few will be high
  */
-export function exponentialRandom(
-  scale: number = 1,
-  randomFn: () => number = Math.random
-): number {
+export function exponentialRandom(scale: number = 1, randomFn: () => number = Math.random): number {
   const u = randomFn()
   return -Math.log(Math.max(1e-10, 1 - u)) * scale
 }
@@ -70,6 +66,7 @@ export function initializeNutrients(
     row.map((cell) => ({
       ...cell,
       nutrientAmount: 0,
+      magicAmount: cell.magicAmount ?? 0,
     }))
   )
 
@@ -81,21 +78,14 @@ export function initializeNutrients(
 }
 
 /**
- * Deplete nutrients when digging (30% lost)
- */
-export function depleteOnDig(nutrientAmount: number): number {
-  return Math.floor(nutrientAmount * (1 - NUTRIENT_DEPLETION_RATIO))
-}
-
-/**
- * Get adjacent soil cells to a position
+ * Get adjacent soil cells to a position (4 directions: up/down/left/right)
  */
 export function getAdjacentSoilCells(position: Position, grid: Cell[][]): Position[] {
   const directions = [
     { x: 0, y: -1 }, // up
-    { x: 0, y: 1 },  // down
+    { x: 0, y: 1 }, // down
     { x: -1, y: 0 }, // left
-    { x: 1, y: 0 },  // right
+    { x: 1, y: 0 }, // right
   ]
 
   const adjacentSoil: Position[] = []
@@ -115,6 +105,67 @@ export function getAdjacentSoilCells(position: Position, grid: Cell[][]): Positi
 }
 
 /**
+ * Get adjacent non-wall cells to a position (4 directions: up/down/left/right)
+ * Used as fallback when no adjacent soil cells exist
+ */
+function getAdjacentNonWallCells(position: Position, grid: Cell[][]): Position[] {
+  const directions = [
+    { x: 0, y: -1 }, // up
+    { x: 0, y: 1 }, // down
+    { x: -1, y: 0 }, // left
+    { x: 1, y: 0 }, // right
+  ]
+
+  const cells: Position[] = []
+
+  for (const dir of directions) {
+    const newX = position.x + dir.x
+    const newY = position.y + dir.y
+
+    if (newY >= 0 && newY < grid.length && newX >= 0 && newX < grid[0].length) {
+      if (grid[newY][newX].type !== 'wall') {
+        cells.push({ x: newX, y: newY })
+      }
+    }
+  }
+
+  return cells
+}
+
+/**
+ * Get surrounding 9 cells (8 adjacent + center) that are not walls
+ * Used for nutrient release on death (conservation law)
+ */
+export function getSurroundingCells(position: Position, grid: Cell[][]): Position[] {
+  const offsets = [
+    { x: -1, y: -1 },
+    { x: 0, y: -1 },
+    { x: 1, y: -1 },
+    { x: -1, y: 0 },
+    { x: 0, y: 0 },
+    { x: 1, y: 0 },
+    { x: -1, y: 1 },
+    { x: 0, y: 1 },
+    { x: 1, y: 1 },
+  ]
+
+  const cells: Position[] = []
+
+  for (const offset of offsets) {
+    const newX = position.x + offset.x
+    const newY = position.y + offset.y
+
+    if (newY >= 0 && newY < grid.length && newX >= 0 && newX < grid[0].length) {
+      if (grid[newY][newX].type !== 'wall') {
+        cells.push({ x: newX, y: newY })
+      }
+    }
+  }
+
+  return cells
+}
+
+/**
  * Nijirigoke absorbs nutrients from adjacent soil
  * Returns updated monster and grid
  */
@@ -124,6 +175,11 @@ export function absorbNutrient(
 ): { monster: Monster; grid: Cell[][] } {
   if (monster.type !== 'nijirigoke') {
     return { monster, grid }
+  }
+
+  // Bud phase: absorb from surrounding 9 cells (soil and empty)
+  if (monster.phase === 'bud') {
+    return absorbNutrientWideRange(monster, grid)
   }
 
   const adjacentSoil = getAdjacentSoilCells(monster.position, grid)
@@ -187,7 +243,8 @@ export function absorbNutrient(
 }
 
 /**
- * Nijirigoke releases nutrients to adjacent soil
+ * Nijirigoke releases nutrients to adjacent cells
+ * Prefers soil cells, falls back to empty cells
  * Releases until carryingNutrient = 1
  */
 export function releaseNutrient(
@@ -202,8 +259,12 @@ export function releaseNutrient(
     return { monster, grid }
   }
 
+  // Try soil cells first, fall back to any non-wall adjacent cells
   const adjacentSoil = getAdjacentSoilCells(monster.position, grid)
-  if (adjacentSoil.length === 0) {
+  const adjacentNonWall =
+    adjacentSoil.length > 0 ? adjacentSoil : getAdjacentNonWallCells(monster.position, grid)
+
+  if (adjacentNonWall.length === 0) {
     return { monster, grid }
   }
 
@@ -213,15 +274,15 @@ export function releaseNutrient(
     x: monster.position.x + directionOffset.x,
     y: monster.position.y + directionOffset.y,
   }
-  const targetSoil = adjacentSoil.find(
-    (s) => s.x === facingPos.x && s.y === facingPos.y
-  ) ?? adjacentSoil[0]
+  const targetCell =
+    adjacentNonWall.find((s) => s.x === facingPos.x && s.y === facingPos.y) ?? adjacentNonWall[0]
   const toRelease = monster.carryingNutrient - 1
 
   const newGrid = grid.map((row, y) =>
     row.map((cell, x) => {
-      if (x === targetSoil.x && y === targetSoil.y) {
-        return { ...cell, nutrientAmount: Math.min(MAX_NUTRIENT_PER_CELL, cell.nutrientAmount + toRelease) }
+      if (x === targetCell.x && y === targetCell.y) {
+        // Conservation law takes priority over MAX_NUTRIENT_PER_CELL cap
+        return { ...cell, nutrientAmount: cell.nutrientAmount + toRelease }
       }
       return cell
     })
@@ -234,34 +295,32 @@ export function releaseNutrient(
 }
 
 /**
- * Release nutrients when monster dies to adjacent soil
- * If no adjacent soil, nutrients are lost
+ * Release nutrients when monster dies to surrounding 9 cells (8 adjacent + center)
+ * Distributes to soil and empty cells (not walls)
+ * If no valid cells, nutrients are lost
  */
-export function releaseNutrientsOnDeath(
-  monster: Monster,
-  grid: Cell[][]
-): Cell[][] {
+export function releaseNutrientsOnDeath(monster: Monster, grid: Cell[][]): Cell[][] {
   if (monster.carryingNutrient <= 0) {
     return grid
   }
 
-  const adjacentSoil = getAdjacentSoilCells(monster.position, grid)
-  if (adjacentSoil.length === 0) {
-    // Nutrients lost (entropy)
+  const surroundingCells = getSurroundingCells(monster.position, grid)
+  if (surroundingCells.length === 0) {
     return grid
   }
 
-  // Distribute evenly among adjacent soil
-  const perCell = Math.floor(monster.carryingNutrient / adjacentSoil.length)
-  let remainder = monster.carryingNutrient % adjacentSoil.length
+  // Distribute evenly among surrounding non-wall cells
+  // Conservation law takes priority over MAX_NUTRIENT_PER_CELL cap
+  const perCell = Math.floor(monster.carryingNutrient / surroundingCells.length)
+  let remainder = monster.carryingNutrient % surroundingCells.length
 
   const newGrid = grid.map((row, y) =>
     row.map((cell, x) => {
-      const match = adjacentSoil.find((s) => s.x === x && s.y === y)
+      const match = surroundingCells.find((s) => s.x === x && s.y === y)
       if (match) {
         const extra = remainder > 0 ? 1 : 0
         if (remainder > 0) remainder--
-        return { ...cell, nutrientAmount: Math.min(MAX_NUTRIENT_PER_CELL, cell.nutrientAmount + perCell + extra) }
+        return { ...cell, nutrientAmount: cell.nutrientAmount + perCell + extra }
       }
       return cell
     })
@@ -302,6 +361,50 @@ export function isWorldDying(state: GameState, threshold: number = 0.1): boolean
 /**
  * Helper: get direction offset
  */
+/**
+ * Bud phase: absorb nutrients from surrounding 9 cells (wide range)
+ */
+function absorbNutrientWideRange(
+  monster: Monster,
+  grid: Cell[][]
+): { monster: Monster; grid: Cell[][] } {
+  const surroundingCells = getSurroundingCells(monster.position, grid)
+  const canAbsorb = NUTRIENT_CARRY_CAPACITY - monster.carryingNutrient
+  if (canAbsorb <= 0) {
+    return { monster, grid }
+  }
+
+  let totalAbsorbed = 0
+  let newGrid = grid
+
+  for (const cell of surroundingCells) {
+    if (totalAbsorbed >= canAbsorb) break
+    const cellNutrients = newGrid[cell.y][cell.x].nutrientAmount
+    if (cellNutrients <= 0) continue
+
+    const toAbsorb = Math.min(cellNutrients, canAbsorb - totalAbsorbed)
+    totalAbsorbed += toAbsorb
+
+    newGrid = newGrid.map((row, y) =>
+      row.map((c, x) => {
+        if (x === cell.x && y === cell.y) {
+          return { ...c, nutrientAmount: c.nutrientAmount - toAbsorb }
+        }
+        return c
+      })
+    )
+  }
+
+  if (totalAbsorbed === 0) {
+    return { monster, grid }
+  }
+
+  return {
+    monster: { ...monster, carryingNutrient: monster.carryingNutrient + totalAbsorbed },
+    grid: newGrid,
+  }
+}
+
 function getDirectionOffset(direction: Monster['direction']): { x: number; y: number } {
   switch (direction) {
     case 'up':

@@ -4,7 +4,7 @@ import { isHungry, detectPrey, prioritizePreyDirection, calculateMove } from './
 
 function createGrid(width: number, height: number, type: Cell['type'] = 'empty'): Cell[][] {
   return Array.from({ length: height }, () =>
-    Array.from({ length: width }, () => ({ type, nutrientAmount: 0 }))
+    Array.from({ length: width }, () => ({ type, nutrientAmount: 0, magicAmount: 0 }))
   )
 }
 
@@ -15,12 +15,15 @@ function createMonster(overrides: Partial<Monster> = {}): Monster {
     position: { x: 2, y: 2 },
     direction: 'right',
     pattern: 'refraction',
+    phase: 'larva' as const,
+    phaseTickCounter: 0,
     life: 30,
     maxLife: 30,
     attack: 3,
     predationTargets: ['nijirigoke'],
     carryingNutrient: 0,
     nestPosition: null,
+    nestOrientation: null,
     ...overrides,
   }
 }
@@ -64,6 +67,9 @@ describe('Hunger System', () => {
         predationTargets: [],
         carryingNutrient: 0,
         nestPosition: null,
+        nestOrientation: null,
+        phase: 'mobile' as const,
+        phaseTickCounter: 0,
       }
 
       const preyByDir = detectPrey(predator, [predator, prey], grid)
@@ -94,6 +100,9 @@ describe('Hunger System', () => {
         predationTargets: [],
         carryingNutrient: 0,
         nestPosition: null,
+        nestOrientation: null,
+        phase: 'mobile' as const,
+        phaseTickCounter: 0,
       }
 
       const preyByDir = detectPrey(predator, [predator, prey], grid)
@@ -121,6 +130,9 @@ describe('Hunger System', () => {
         predationTargets: ['nijirigoke', 'gajigajimushi'],
         carryingNutrient: 0,
         nestPosition: null,
+        nestOrientation: null,
+        phase: 'normal' as const,
+        phaseTickCounter: 0,
       }
 
       const preyByDir = detectPrey(predator, [predator, lizardman], grid)
@@ -163,6 +175,9 @@ describe('Hunger System', () => {
         predationTargets: [],
         carryingNutrient: 0,
         nestPosition: null,
+        nestOrientation: null,
+        phase: 'mobile' as const,
+        phaseTickCounter: 0,
       }
 
       const result = prioritizePreyDirection(predator, [predator, prey], grid, 'up')
@@ -195,6 +210,9 @@ describe('Hunger System', () => {
         predationTargets: [],
         carryingNutrient: 0,
         nestPosition: null,
+        nestOrientation: null,
+        phase: 'mobile' as const,
+        phaseTickCounter: 0,
       }
 
       const result = calculateMove(predator, grid, [predator, prey], () => 0)

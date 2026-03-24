@@ -13,7 +13,7 @@ import {
 
 function createGrid(width: number, height: number, type: Cell['type'] = 'empty'): Cell[][] {
   return Array.from({ length: height }, () =>
-    Array.from({ length: width }, () => ({ type, nutrientAmount: 0 }))
+    Array.from({ length: width }, () => ({ type, nutrientAmount: 0, magicAmount: 0 }))
   )
 }
 
@@ -24,12 +24,15 @@ function createMonster(overrides: Partial<Monster> = {}): Monster {
     position: { x: 2, y: 2 },
     direction: 'right',
     pattern: 'stationary',
+    phase: 'normal' as const,
+    phaseTickCounter: 0,
     life: 80,
     maxLife: 80,
     attack: 8,
     predationTargets: ['nijirigoke', 'gajigajimushi'],
     carryingNutrient: 0,
     nestPosition: null,
+    nestOrientation: null,
     ...overrides,
   }
 }
@@ -224,13 +227,15 @@ describe('Stationary Movement', () => {
 
   describe('calculateStationaryMove', () => {
     it('should establish nest in open area and stay in place', () => {
-      const grid = createGrid(5, 5, 'empty')
-      const monster = createMonster({ position: { x: 2, y: 2 }, nestPosition: null })
+      const grid = createGrid(8, 8, 'empty')
+      const monster = createMonster({ position: { x: 3, y: 3 }, nestPosition: null })
 
       const result = calculateStationaryMove(monster, grid, [], () => 0)
 
-      expect(result.nestPosition).toEqual({ x: 2, y: 2 })
-      expect(result.position).toEqual({ x: 2, y: 2 }) // stays in place when establishing
+      // findNestArea returns center of first matching 2x3 pattern
+      expect(result.nestPosition).not.toBeNull()
+      expect(result.nestOrientation).not.toBeNull()
+      expect(result.position).toEqual({ x: 3, y: 3 }) // stays in place when establishing
     })
 
     it('should patrol by moving one cell at a time', () => {
@@ -238,6 +243,7 @@ describe('Stationary Movement', () => {
       const monster = createMonster({
         position: { x: 3, y: 3 },
         nestPosition: { x: 3, y: 3 },
+        nestOrientation: 'horizontal' as const,
       })
 
       const result = calculateStationaryMove(monster, grid, [], () => 0)
@@ -255,6 +261,7 @@ describe('Stationary Movement', () => {
       const monster = createMonster({
         position: { x: 7, y: 5 }, // 2 cells away from nest
         nestPosition: { x: 5, y: 5 },
+        nestOrientation: 'horizontal' as const,
       })
 
       const result = calculateStationaryMove(monster, grid, [], () => 0)
@@ -275,6 +282,7 @@ describe('Stationary Movement', () => {
         position: { x: 2, y: 2 },
         direction: 'right',
         nestPosition: null,
+        nestOrientation: null,
       })
 
       const result = calculateStationaryMove(monster, grid, [], () => 0)
@@ -292,6 +300,7 @@ describe('Stationary Movement', () => {
         position: { x: 2, y: 2 },
         direction: 'down',
         nestPosition: null,
+        nestOrientation: null,
       })
 
       const result = calculateStationaryMove(monster, grid, [], () => 0)
@@ -305,6 +314,7 @@ describe('Stationary Movement', () => {
       const lizardman = createMonster({
         position: { x: 5, y: 5 },
         nestPosition: { x: 5, y: 5 },
+        nestOrientation: 'horizontal' as const,
         life: 20, // hungry (below 50% of maxLife 80)
         maxLife: 80,
         predationTargets: ['nijirigoke'],
@@ -322,6 +332,9 @@ describe('Stationary Movement', () => {
         predationTargets: [],
         carryingNutrient: 0,
         nestPosition: null,
+        nestOrientation: null,
+        phase: 'mobile' as const,
+        phaseTickCounter: 0,
       }
 
       const result = calculateStationaryMove(lizardman, grid, [prey], () => 0)
@@ -336,6 +349,7 @@ describe('Stationary Movement', () => {
       const lizardman = createMonster({
         position: { x: 5, y: 5 },
         nestPosition: { x: 5, y: 5 },
+        nestOrientation: 'horizontal' as const,
         life: 80, // full health, not hungry
         maxLife: 80,
         predationTargets: ['nijirigoke'],
@@ -353,6 +367,9 @@ describe('Stationary Movement', () => {
         predationTargets: [],
         carryingNutrient: 0,
         nestPosition: null,
+        nestOrientation: null,
+        phase: 'mobile' as const,
+        phaseTickCounter: 0,
       }
 
       // With randomFn returning 0, it should pick first patrol option (up: {x:5,y:4})

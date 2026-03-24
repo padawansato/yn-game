@@ -1,4 +1,4 @@
-import type { Cell, Direction, Monster, Position } from '../types'
+import type { Cell, Direction, Monster, MonsterPhase, Position } from '../types'
 import { calculateStraightMove, getForwardPosition, isValidMove } from './straight'
 import { calculateRefractionMove } from './refraction'
 import { calculateStationaryMove } from './stationary'
@@ -10,6 +10,7 @@ export interface MoveResult {
   position: Position
   direction: Direction
   nestPosition: Position | null
+  nestOrientation: 'horizontal' | 'vertical' | null
 }
 
 /**
@@ -89,6 +90,9 @@ export function prioritizePreyDirection(
   return closestDirection
 }
 
+/** Phases where the monster cannot move */
+const IMMOBILE_PHASES: MonsterPhase[] = ['bud', 'flower', 'withered', 'pupa', 'laying', 'egg']
+
 /**
  * Calculate move for any monster, applying hunger behavior if needed
  */
@@ -98,6 +102,16 @@ export function calculateMove(
   monsters: Monster[],
   randomFn: () => number = Math.random
 ): MoveResult {
+  // Immobile phases stay in place
+  if (IMMOBILE_PHASES.includes(monster.phase)) {
+    return {
+      position: monster.position,
+      direction: monster.direction,
+      nestPosition: monster.nestPosition,
+      nestOrientation: null,
+    }
+  }
+
   let result: MoveResult
 
   // Calculate base movement based on pattern
@@ -107,6 +121,7 @@ export function calculateMove(
       result = {
         ...straightResult,
         nestPosition: null,
+        nestOrientation: null,
       }
       break
     }
@@ -115,6 +130,7 @@ export function calculateMove(
       result = {
         ...refractionResult,
         nestPosition: null,
+        nestOrientation: null,
       }
       break
     }

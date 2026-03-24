@@ -7,6 +7,12 @@ import {
   dig,
   getTotalNutrients,
   GameLoop,
+  LAYING_NUTRIENT_THRESHOLD,
+  LAYING_LIFE_THRESHOLD,
+  PUPA_NUTRIENT_THRESHOLD,
+  BUD_NUTRIENT_THRESHOLD,
+  BUD_LIFE_THRESHOLD,
+  MONSTER_CONFIGS,
   type GameState,
   type Cell,
   type Monster,
@@ -37,9 +43,10 @@ const isPaused = ref(false)
 
 // Game Loop
 function executeTickWithEvents() {
-  const result = tick(gameState.value)
+  const randomFn = seededRandom || Math.random
+  const result = tick(gameState.value, randomFn)
   result.events.forEach((e) => {
-    events.value.unshift(`[${e.type}] ${formatEvent(e)}`)
+    events.value.unshift(`[t${gameState.value.gameTime}][${e.type}] ${formatEvent(e)}`)
   })
   gameState.value = result.state
 }
@@ -107,10 +114,212 @@ function stopGame() {
 
 function handleReset() {
   stopGame()
+  seededRandom = null // 通常モードに戻す
   gameState.value = createInitialState()
   events.value = []
   initGameLoop()
 }
+
+// === 固定乱数 ===
+function createSeededRandom(seed: number): () => number {
+  let s = seed
+  return () => {
+    s = (s * 1664525 + 1013904223) & 0xffffffff
+    return (s >>> 0) / 0x100000000
+  }
+}
+
+// === デバッグシナリオ ===
+interface Scenario {
+  name: string
+  description: string
+  setup: () => void
+}
+
+const scenarios: Scenario[] = [
+  {
+    name: 'リザードマン産卵',
+    description: '巣あり・養分/life十分 → laying → 卵 → 孵化',
+    setup() {
+      stopGame()
+      const grid = makeEmptyArena(12, 10)
+      const state = makeState(grid, [
+        {
+          type: 'lizardman',
+          position: { x: 5, y: 4 },
+          nestPosition: { x: 5, y: 4 },
+          nestOrientation: 'horizontal' as const,
+          life: LAYING_LIFE_THRESHOLD + 20,
+          carryingNutrient: LAYING_NUTRIENT_THRESHOLD + 5,
+          phase: 'normal',
+        },
+      ])
+      loadScenario(state, 'リザードマン産卵: Startで観察')
+    },
+  },
+  {
+    name: 'ニジリゴケ変態',
+    description: '養分豊富 → bud → flower → withered → 繁殖',
+    setup() {
+      stopGame()
+      const grid = makeEmptyArena(12, 10)
+      // 周囲に養分を置く（bud吸収用）
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          grid[4 + dy][5 + dx].nutrientAmount = 5
+        }
+      }
+      const state = makeState(grid, [
+        {
+          type: 'nijirigoke',
+          position: { x: 5, y: 4 },
+          life: BUD_LIFE_THRESHOLD,
+          carryingNutrient: BUD_NUTRIENT_THRESHOLD,
+          phase: 'mobile',
+        },
+      ])
+      loadScenario(state, 'ニジリゴケ変態: bud→flower→withered→繁殖')
+    },
+  },
+  {
+    name: 'ガジガジムシ変態',
+    description: '養分あり → pupa → adult → 繁殖',
+    setup() {
+      stopGame()
+      const grid = makeEmptyArena(12, 10)
+      const state = makeState(grid, [
+        {
+          type: 'gajigajimushi',
+          position: { x: 5, y: 4 },
+          life: 25,
+          carryingNutrient: PUPA_NUTRIENT_THRESHOLD + 3,
+          phase: 'larva',
+        },
+      ])
+      loadScenario(state, 'ガジガジムシ変態: pupa→adult→繁殖')
+    },
+  },
+  {
+    name: '捕食チェーン',
+    description: 'リザードマン・ガジガジムシ・ニジリゴケが同エリアに',
+    setup() {
+      stopGame()
+      const grid = makeEmptyArena(12, 10)
+      const state = makeState(grid, [
+        {
+          type: 'lizardman',
+          position: { x: 5, y: 4 },
+          life: 60,
+          carryingNutrient: 3,
+          phase: 'normal',
+        },
+        {
+          type: 'gajigajimushi',
+          position: { x: 6, y: 4 },
+          life: 20,
+          carryingNutrient: 3,
+          phase: 'larva',
+        },
+        {
+          type: 'nijirigoke',
+          position: { x: 7, y: 4 },
+          life: 10,
+          carryingNutrient: 3,
+          phase: 'mobile',
+        },
+        {
+          type: 'nijirigoke',
+          position: { x: 4, y: 4 },
+          life: 10,
+          carryingNutrient: 3,
+          phase: 'mobile',
+        },
+      ])
+      loadScenario(state, '捕食チェーン: 3種が遭遇')
+    },
+  },
+]
+
+// シナリオ用ヘルパー
+function makeEmptyArena(width: number, height: number): Cell[][] {
+  const grid: Cell[][] = []
+  for (let y = 0; y < height; y++) {
+    const row: Cell[] = []
+    for (let x = 0; x < width; x++) {
+      if (x === 0 || x === width - 1 || y === 0 || y === height - 1) {
+        row.push({ type: 'wall', nutrientAmount: 0, magicAmount: 0 })
+      } else {
+        row.push({ type: 'empty', nutrientAmount: 0, magicAmount: 0 })
+      }
+    }
+    grid.push(row)
+  }
+  return grid
+}
+
+interface MonsterSetup {
+  type: MonsterType
+  position: { x: number; y: number }
+  nestPosition?: { x: number; y: number } | null
+  nestOrientation?: 'horizontal' | 'vertical' | null
+  life: number
+  carryingNutrient: number
+  phase: Monster['phase']
+}
+
+let monsterIdCounter = 0
+
+function makeState(grid: Cell[][], monsterSetups: MonsterSetup[]): GameState {
+  monsterIdCounter = 0
+  const monsters: Monster[] = monsterSetups.map((s) => {
+    monsterIdCounter++
+    const config = MONSTER_CONFIGS[s.type]
+    return {
+      id: `monster-${monsterIdCounter}`,
+      type: s.type,
+      position: { ...s.position },
+      direction: 'right' as const,
+      pattern: config.pattern,
+      phase: s.phase,
+      phaseTickCounter: 0,
+      life: s.life,
+      maxLife: config.life,
+      attack: config.attack,
+      predationTargets: [...config.predationTargets],
+      carryingNutrient: s.carryingNutrient,
+      nestPosition: s.nestPosition ? { ...s.nestPosition } : null,
+      nestOrientation: s.nestOrientation ?? null,
+    }
+  })
+
+  const totalNutrients = getTotalNutrients({
+    grid,
+    monsters,
+    totalInitialNutrients: 0,
+    digPower: 100,
+    gameTime: 0,
+    nextMonsterId: 0,
+  })
+
+  return {
+    grid,
+    monsters,
+    totalInitialNutrients: totalNutrients,
+    digPower: 100,
+    gameTime: 0,
+    nextMonsterId: monsterIdCounter,
+  }
+}
+
+function loadScenario(state: GameState, message: string) {
+  gameState.value = state
+  events.value = [`[SCENARIO] ${message}`]
+  seededRandom = createSeededRandom(42)
+  initGameLoop()
+}
+
+// シナリオモードでは固定乱数を使う
+let seededRandom: (() => number) | null = null
 
 function formatEvent(e: { type: string; [key: string]: unknown }): string {
   switch (e.type) {
@@ -124,10 +333,35 @@ function formatEvent(e: { type: string; [key: string]: unknown }): string {
       return `${(e.monster as Monster).type} absorbed ${e.amount}`
     case 'NUTRIENT_RELEASED':
       return `${(e.monster as Monster).type} released ${e.amount}`
+    case 'PHASE_TRANSITION':
+      return `${e.monsterId} ${e.oldPhase} → ${e.newPhase}`
+    case 'EGG_LAID':
+      return `${e.parentId} laid egg at (${(e.position as { x: number; y: number }).x},${(e.position as { x: number; y: number }).y})`
+    case 'EGG_HATCHED':
+      return `${e.offspringId} hatched at (${(e.position as { x: number; y: number }).x},${(e.position as { x: number; y: number }).y})`
+    case 'MONSTER_REPRODUCED':
+      return `${e.parentId} reproduced → ${(e.offspringIds as string[]).length} offspring`
+    case 'MONSTER_ATTACKED':
+      return `${e.monsterId} hit (dmg=${e.damage}, hp=${e.remainingLife})`
     default:
       return e.type
   }
 }
+
+// デバッグ: コンソールから window.__state でゲーム状態を確認可能
+(window as unknown as Record<string, unknown>).__state = gameState
+;(window as unknown as Record<string, unknown>).__monsters = computed(() => {
+  return gameState.value.monsters.map((m) => ({
+    id: m.id,
+    type: m.type,
+    phase: m.phase,
+    pos: `${m.position.x},${m.position.y}`,
+    life: `${m.life}/${m.maxLife}`,
+    nutrient: m.carryingNutrient,
+    nest: m.nestPosition ? `${m.nestPosition.x},${m.nestPosition.y}` : null,
+    phaseTick: m.phaseTickCounter,
+  }))
+})
 
 // Display helpers
 type EntityType = MonsterType
@@ -189,9 +423,7 @@ const monsterSummary = computed(() => {
 
 // Monster helpers
 function getMonstersAtCell(x: number, y: number): Monster[] {
-  return gameState.value.monsters.filter(
-    (m) => m.position.x === x && m.position.y === y
-  )
+  return gameState.value.monsters.filter((m) => m.position.x === x && m.position.y === y)
 }
 
 // Display priority: lower number = higher priority
@@ -257,6 +489,19 @@ function getNutrientLevel(amount: number): 'low' | 'mid' | 'high' | null {
       </button>
     </div>
 
+    <div class="scenarios">
+      <strong>シナリオ:</strong>
+      <button
+        v-for="s in scenarios"
+        :key="s.name"
+        class="scenario-btn"
+        :title="s.description"
+        @click="s.setup()"
+      >
+        {{ s.name }}
+      </button>
+    </div>
+
     <div class="status">
       <div class="status-row">
         <span>ゲーム時間: {{ gameState.gameTime }}</span>
@@ -294,7 +539,9 @@ function getNutrientLevel(amount: number): 'low' | 'mid' | 'high' | null {
           <span
             v-if="getOverlapCount(x, y) > 1"
             class="overlap-badge"
-          >{{ getOverlapCount(x, y) }}</span>
+          >{{
+            getOverlapCount(x, y)
+          }}</span>
           <span
             v-if="cell.type === 'soil' && getNutrientLevel(cell.nutrientAmount)"
             :class="['nutrient-indicator', `nutrient-${getNutrientLevel(cell.nutrientAmount)}`]"
@@ -350,6 +597,28 @@ body {
 .debug-ui {
   max-width: 800px;
   margin: 0 auto;
+}
+
+.scenarios {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.scenario-btn {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: #2a3a2a;
+  color: #8f8;
+  border: 1px solid #4a6a4a;
+  border-radius: 4px;
+}
+
+.scenario-btn:hover {
+  background: #3a4a3a;
 }
 
 h1 {
@@ -409,8 +678,13 @@ h1 {
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .grid {

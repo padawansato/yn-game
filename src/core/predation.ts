@@ -9,9 +9,17 @@ export interface PredationResult {
 
 /**
  * Check if predator can eat prey based on hierarchy
+ * Egg-phase lizardman is vulnerable to gajigajimushi
  */
 export function canPredate(predator: Monster, prey: Monster): boolean {
-  return predator.predationTargets.includes(prey.type)
+  if (predator.predationTargets.includes(prey.type)) {
+    return true
+  }
+  // Eggs are vulnerable to gajigajimushi regardless of type
+  if (prey.phase === 'egg' && predator.type === 'gajigajimushi') {
+    return true
+  }
+  return false
 }
 
 /**
@@ -42,10 +50,7 @@ export function checkSameCellPredation(
 /**
  * Apply predation: predator gains life, prey dies
  */
-export function applyPredation(
-  predator: Monster,
-  prey: Monster
-): PredationResult {
+export function applyPredation(predator: Monster, prey: Monster): PredationResult {
   const events: GameEvent[] = []
 
   // Life recovery (capped at maxLife)

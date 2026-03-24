@@ -1,6 +1,7 @@
 import type { Cell, Direction, Monster, Position } from '../types'
 import { getForwardPosition, getTurnDirections, isValidMove } from './straight'
 import { isHungry } from './hunger'
+import { LAYING_NUTRIENT_THRESHOLD, LAYING_LIFE_THRESHOLD } from '../constants'
 
 /**
  * Check if position is adjacent to nest (including diagonal)
@@ -37,19 +38,127 @@ export function has2x3Space(position: Position, grid: Cell[][]): boolean {
   // Check all possible 2x3 and 3x2 rectangles that include the position
   const patterns = [
     // 2x3 (width=3, height=2) patterns - position can be at any of the 6 cells
-    { offsets: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 }] },
-    { offsets: [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: -1, y: 1 }, { x: 0, y: 1 }, { x: 1, y: 1 }] },
-    { offsets: [{ x: -2, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 0 }, { x: -2, y: 1 }, { x: -1, y: 1 }, { x: 0, y: 1 }] },
-    { offsets: [{ x: 0, y: -1 }, { x: 1, y: -1 }, { x: 2, y: -1 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }] },
-    { offsets: [{ x: -1, y: -1 }, { x: 0, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }] },
-    { offsets: [{ x: -2, y: -1 }, { x: -1, y: -1 }, { x: 0, y: -1 }, { x: -2, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 0 }] },
+    {
+      offsets: [
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 2, y: 0 },
+        { x: 0, y: 1 },
+        { x: 1, y: 1 },
+        { x: 2, y: 1 },
+      ],
+    },
+    {
+      offsets: [
+        { x: -1, y: 0 },
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: -1, y: 1 },
+        { x: 0, y: 1 },
+        { x: 1, y: 1 },
+      ],
+    },
+    {
+      offsets: [
+        { x: -2, y: 0 },
+        { x: -1, y: 0 },
+        { x: 0, y: 0 },
+        { x: -2, y: 1 },
+        { x: -1, y: 1 },
+        { x: 0, y: 1 },
+      ],
+    },
+    {
+      offsets: [
+        { x: 0, y: -1 },
+        { x: 1, y: -1 },
+        { x: 2, y: -1 },
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 2, y: 0 },
+      ],
+    },
+    {
+      offsets: [
+        { x: -1, y: -1 },
+        { x: 0, y: -1 },
+        { x: 1, y: -1 },
+        { x: -1, y: 0 },
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+      ],
+    },
+    {
+      offsets: [
+        { x: -2, y: -1 },
+        { x: -1, y: -1 },
+        { x: 0, y: -1 },
+        { x: -2, y: 0 },
+        { x: -1, y: 0 },
+        { x: 0, y: 0 },
+      ],
+    },
     // 3x2 (width=2, height=3) patterns - position can be at any of the 6 cells
-    { offsets: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 0, y: 2 }, { x: 1, y: 2 }] },
-    { offsets: [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: -1, y: 1 }, { x: 0, y: 1 }, { x: -1, y: 2 }, { x: 0, y: 2 }] },
-    { offsets: [{ x: 0, y: -1 }, { x: 1, y: -1 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }] },
-    { offsets: [{ x: -1, y: -1 }, { x: 0, y: -1 }, { x: -1, y: 0 }, { x: 0, y: 0 }, { x: -1, y: 1 }, { x: 0, y: 1 }] },
-    { offsets: [{ x: 0, y: -2 }, { x: 1, y: -2 }, { x: 0, y: -1 }, { x: 1, y: -1 }, { x: 0, y: 0 }, { x: 1, y: 0 }] },
-    { offsets: [{ x: -1, y: -2 }, { x: 0, y: -2 }, { x: -1, y: -1 }, { x: 0, y: -1 }, { x: -1, y: 0 }, { x: 0, y: 0 }] },
+    {
+      offsets: [
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 0, y: 1 },
+        { x: 1, y: 1 },
+        { x: 0, y: 2 },
+        { x: 1, y: 2 },
+      ],
+    },
+    {
+      offsets: [
+        { x: -1, y: 0 },
+        { x: 0, y: 0 },
+        { x: -1, y: 1 },
+        { x: 0, y: 1 },
+        { x: -1, y: 2 },
+        { x: 0, y: 2 },
+      ],
+    },
+    {
+      offsets: [
+        { x: 0, y: -1 },
+        { x: 1, y: -1 },
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 0, y: 1 },
+        { x: 1, y: 1 },
+      ],
+    },
+    {
+      offsets: [
+        { x: -1, y: -1 },
+        { x: 0, y: -1 },
+        { x: -1, y: 0 },
+        { x: 0, y: 0 },
+        { x: -1, y: 1 },
+        { x: 0, y: 1 },
+      ],
+    },
+    {
+      offsets: [
+        { x: 0, y: -2 },
+        { x: 1, y: -2 },
+        { x: 0, y: -1 },
+        { x: 1, y: -1 },
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+      ],
+    },
+    {
+      offsets: [
+        { x: -1, y: -2 },
+        { x: 0, y: -2 },
+        { x: -1, y: -1 },
+        { x: 0, y: -1 },
+        { x: -1, y: 0 },
+        { x: 0, y: 0 },
+      ],
+    },
   ]
 
   for (const pattern of patterns) {
@@ -64,10 +173,82 @@ export function has2x3Space(position: Position, grid: Cell[][]): boolean {
 }
 
 /**
+ * Find a 2x3 or 3x2 nest area containing the position.
+ * Returns the nest center and orientation, or null if no valid space.
+ *
+ * horizontal (3 wide × 2 tall): center = middle of top row (offset index 1)
+ * vertical (2 wide × 3 tall): center = middle-left of center row (offset index 2)
+ */
+export function findNestArea(
+  position: Position,
+  grid: Cell[][]
+): { center: Position; orientation: 'horizontal' | 'vertical' } | null {
+  const patterns: { offsets: { x: number; y: number }[]; orientation: 'horizontal' | 'vertical' }[] = [
+    // horizontal (width=3, height=2)
+    { offsets: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 }], orientation: 'horizontal' },
+    { offsets: [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: -1, y: 1 }, { x: 0, y: 1 }, { x: 1, y: 1 }], orientation: 'horizontal' },
+    { offsets: [{ x: -2, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 0 }, { x: -2, y: 1 }, { x: -1, y: 1 }, { x: 0, y: 1 }], orientation: 'horizontal' },
+    { offsets: [{ x: 0, y: -1 }, { x: 1, y: -1 }, { x: 2, y: -1 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }], orientation: 'horizontal' },
+    { offsets: [{ x: -1, y: -1 }, { x: 0, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }], orientation: 'horizontal' },
+    { offsets: [{ x: -2, y: -1 }, { x: -1, y: -1 }, { x: 0, y: -1 }, { x: -2, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 0 }], orientation: 'horizontal' },
+    // vertical (width=2, height=3)
+    { offsets: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 0, y: 2 }, { x: 1, y: 2 }], orientation: 'vertical' },
+    { offsets: [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: -1, y: 1 }, { x: 0, y: 1 }, { x: -1, y: 2 }, { x: 0, y: 2 }], orientation: 'vertical' },
+    { offsets: [{ x: 0, y: -1 }, { x: 1, y: -1 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }], orientation: 'vertical' },
+    { offsets: [{ x: -1, y: -1 }, { x: 0, y: -1 }, { x: -1, y: 0 }, { x: 0, y: 0 }, { x: -1, y: 1 }, { x: 0, y: 1 }], orientation: 'vertical' },
+    { offsets: [{ x: 0, y: -2 }, { x: 1, y: -2 }, { x: 0, y: -1 }, { x: 1, y: -1 }, { x: 0, y: 0 }, { x: 1, y: 0 }], orientation: 'vertical' },
+    { offsets: [{ x: -1, y: -2 }, { x: 0, y: -2 }, { x: -1, y: -1 }, { x: 0, y: -1 }, { x: -1, y: 0 }, { x: 0, y: 0 }], orientation: 'vertical' },
+  ]
+
+  for (const pattern of patterns) {
+    const allOpen = pattern.offsets.every((offset) => {
+      const pos = { x: position.x + offset.x, y: position.y + offset.y }
+      return isValidMove(pos, grid)
+    })
+    if (allOpen) {
+      // Calculate center: average of all 6 cells, floored
+      const sumX = pattern.offsets.reduce((s, o) => s + position.x + o.x, 0)
+      const sumY = pattern.offsets.reduce((s, o) => s + position.y + o.y, 0)
+      const center = { x: Math.floor(sumX / 6), y: Math.floor(sumY / 6) }
+      return { center, orientation: pattern.orientation }
+    }
+  }
+  return null
+}
+
+/**
  * Check if a position has enough open area for a nest (2x3 or 3x2 contiguous space)
  */
 export function canEstablishNest(position: Position, grid: Cell[][]): boolean {
-  return has2x3Space(position, grid)
+  return findNestArea(position, grid) !== null
+}
+
+/**
+ * Get the 6 cells of a nest given its center and orientation
+ */
+export function getNestCells(center: Position, orientation: 'horizontal' | 'vertical'): Position[] {
+  if (orientation === 'horizontal') {
+    // 3 wide × 2 tall, center is middle of area
+    return [
+      { x: center.x - 1, y: center.y }, { x: center.x, y: center.y }, { x: center.x + 1, y: center.y },
+      { x: center.x - 1, y: center.y + 1 }, { x: center.x, y: center.y + 1 }, { x: center.x + 1, y: center.y + 1 },
+    ]
+  } else {
+    // 2 wide × 3 tall, center is middle of area
+    return [
+      { x: center.x, y: center.y - 1 }, { x: center.x + 1, y: center.y - 1 },
+      { x: center.x, y: center.y }, { x: center.x + 1, y: center.y },
+      { x: center.x, y: center.y + 1 }, { x: center.x + 1, y: center.y + 1 },
+    ]
+  }
+}
+
+/**
+ * Check if a position is within a nest area
+ */
+export function isInNestArea(position: Position, nestCenter: Position, orientation: 'horizontal' | 'vertical'): boolean {
+  const cells = getNestCells(nestCenter, orientation)
+  return cells.some(c => c.x === position.x && c.y === position.y)
 }
 
 /**
@@ -173,20 +354,58 @@ export function calculateStationaryMove(
   grid: Cell[][],
   monsters: Monster[] = [],
   randomFn: () => number = Math.random
-): { position: Position; direction: Direction; nestPosition: Position | null } {
+): {
+  position: Position
+  direction: Direction
+  nestPosition: Position | null
+  nestOrientation: 'horizontal' | 'vertical' | null
+} {
   // No nest yet - try to establish one
   if (monster.nestPosition === null) {
-    if (canEstablishNest(monster.position, grid)) {
-      // Establish nest at current position, stay in place this turn
+    const nestInfo = findNestArea(monster.position, grid)
+    if (nestInfo) {
+      // Establish nest, record center and orientation
       return {
         position: monster.position,
         direction: monster.direction,
-        nestPosition: monster.position,
+        nestPosition: nestInfo.center,
+        nestOrientation: nestInfo.orientation,
       }
     }
 
     // Cannot establish nest - use straight pattern fallback
     return straightFallback(monster, grid, randomFn)
+  }
+
+  // Ready to lay eggs - return to nest center
+  if (
+    (monster.phase === 'normal' || monster.phase === 'nesting') &&
+    monster.carryingNutrient >= LAYING_NUTRIENT_THRESHOLD &&
+    monster.life >= LAYING_LIFE_THRESHOLD
+  ) {
+    // Already at nest center - stay
+    if (
+      monster.position.x === monster.nestPosition.x &&
+      monster.position.y === monster.nestPosition.y
+    ) {
+      return {
+        position: monster.position,
+        direction: monster.direction,
+        nestPosition: monster.nestPosition,
+        nestOrientation: monster.nestOrientation,
+      }
+    }
+    // Move toward nest center
+    const direction = getDirectionToward(monster.position, monster.nestPosition)
+    const targetPos = getForwardPosition(monster.position, direction)
+    if (isValidMove(targetPos, grid)) {
+      return {
+        position: targetPos,
+        direction,
+        nestPosition: monster.nestPosition,
+        nestOrientation: monster.nestOrientation,
+      }
+    }
   }
 
   // Has nest - patrol by moving one cell at a time within patrol range
@@ -201,6 +420,7 @@ export function calculateStationaryMove(
       position: monster.position,
       direction: monster.direction,
       nestPosition: monster.nestPosition,
+      nestOrientation: monster.nestOrientation,
     }
   }
 
@@ -219,6 +439,7 @@ export function calculateStationaryMove(
         position: target,
         direction: preyDirection,
         nestPosition: monster.nestPosition,
+        nestOrientation: monster.nestOrientation,
       }
     }
   }
@@ -232,6 +453,7 @@ export function calculateStationaryMove(
     position: target,
     direction,
     nestPosition: monster.nestPosition,
+    nestOrientation: monster.nestOrientation,
   }
 }
 
@@ -242,7 +464,7 @@ function straightFallback(
   monster: Monster,
   grid: Cell[][],
   randomFn: () => number
-): { position: Position; direction: Direction; nestPosition: null } {
+): { position: Position; direction: Direction; nestPosition: null; nestOrientation: null } {
   const forwardPos = getForwardPosition(monster.position, monster.direction)
 
   if (isValidMove(forwardPos, grid)) {
@@ -250,6 +472,7 @@ function straightFallback(
       position: forwardPos,
       direction: monster.direction,
       nestPosition: null,
+      nestOrientation: null,
     }
   }
 
@@ -270,6 +493,7 @@ function straightFallback(
       position: monster.position,
       direction: monster.direction,
       nestPosition: null,
+      nestOrientation: null,
     }
   }
 
@@ -280,5 +504,6 @@ function straightFallback(
     position: monster.position,
     direction: newDir,
     nestPosition: null,
+    nestOrientation: null,
   }
 }
