@@ -104,13 +104,15 @@ A Lizardman SHALL construct a nest when it finds a suitable open space.
 - **WHEN** a Lizardman is at a position where a contiguous 2x3 or 3x2 empty space exists containing that position
 - **THEN** it SHALL establish a nest, recording the nest area (6 cells)
 
-#### Scenario: Nest cost
+#### Scenario: Nest cost (FUTURE)
 - **WHEN** a Lizardman builds a nest
 - **THEN** it SHALL consume NEST_NUTRIENT_COST (14) nutrients and NEST_LIFE_COST (2) life
+- **NOTE**: Not yet implemented. Currently nests are free. Planned for a future change.
 
-#### Scenario: Shared nests
+#### Scenario: Shared nests (FUTURE)
 - **WHEN** a Lizardman encounters another Lizardman's nest
 - **THEN** it MAY use that nest for laying eggs (nest is shared among Lizardmen)
+- **NOTE**: Not yet implemented. Planned for a future change.
 
 ### Requirement: Lizardman lifecycle - laying transition
 A Lizardman with a nest SHALL transition to 'laying' when nutrition conditions are met.
@@ -127,9 +129,10 @@ A Lizardman with a nest SHALL transition to 'laying' when nutrition conditions a
 - **WHEN** a Lizardman enters 'laying' phase
 - **THEN** it SHALL remain in laying for LAYING_DURATION ticks before producing an egg
 
-#### Scenario: Laying pickaxe immunity
+#### Scenario: Laying pickaxe immunity (FUTURE)
 - **WHEN** a Lizardman in 'laying' phase is hit by the pickaxe
 - **THEN** the pickaxe attack SHALL be ignored (no damage)
+- **NOTE**: Not yet implemented. Planned for a future change.
 
 #### Scenario: Laying interruption by attack (FUTURE)
 - **WHEN** a Lizardman in 'laying' phase is attacked by an adjacent physical attacker (combat, not pickaxe)
