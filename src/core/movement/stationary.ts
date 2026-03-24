@@ -1,7 +1,7 @@
 import type { Cell, Direction, Monster, Position } from '../types'
 import { getForwardPosition, getTurnDirections, isValidMove } from './straight'
 import { isHungry } from './hunger'
-import { LAYING_NUTRIENT_THRESHOLD, LAYING_LIFE_THRESHOLD } from '../constants'
+import { LAYING_NUTRIENT_THRESHOLD, LAYING_LIFE_THRESHOLD, NEST_NUTRIENT_COST, NEST_LIFE_COST } from '../constants'
 
 /**
  * Check if position is adjacent to nest (including diagonal)
@@ -363,7 +363,9 @@ export function calculateStationaryMove(
   // No nest yet - try to establish one
   if (monster.nestPosition === null) {
     const nestInfo = findNestArea(monster.position, grid)
-    if (nestInfo) {
+    if (nestInfo &&
+        monster.carryingNutrient >= NEST_NUTRIENT_COST &&
+        monster.life > NEST_LIFE_COST) {
       // Establish nest, record center and orientation
       return {
         position: monster.position,

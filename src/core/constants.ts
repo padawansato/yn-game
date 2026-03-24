@@ -84,3 +84,7 @@ export const LAYING_NUTRIENT_THRESHOLD = 5 // normal/nesting → laying: carryin
 export const LAYING_LIFE_THRESHOLD = 40 // normal/nesting → laying: life >= threshold
 export const LAYING_DURATION = 15 // laying → egg spawn: ticks to wait
 export const EGG_HATCH_DURATION = 20 // egg → hatch: ticks to wait
+
+// Nest building cost
+export const NEST_NUTRIENT_COST = 14   // nutrients consumed when building a nest
+export const NEST_LIFE_COST = 2        // life consumed when building a nest

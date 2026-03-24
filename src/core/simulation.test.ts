@@ -6,6 +6,7 @@ import {
   applyMovements,
   decreaseLifeForMoved,
   processNutrientInteractions,
+  processNestEstablishment,
   tick,
   dig,
   isAdjacentToEmpty,
@@ -22,6 +23,8 @@ import {
   PUPA_NUTRIENT_THRESHOLD,
   PUPA_DURATION,
   EGG_HATCH_DURATION,
+  NEST_NUTRIENT_COST,
+  NEST_LIFE_COST,
 } from './constants'
 import { getTotalNutrients } from './nutrient'
 
@@ -1224,6 +1227,67 @@ describe('Simulation', () => {
           expect(result.state.monsters[0].carryingNutrient).toBe(10)
         }
       })
+    })
+  })
+
+  describe('processNestEstablishment', () => {
+    it('should deduct nutrient and life cost when nest is newly established (null → non-null)', () => {
+      const monster = createMonster({
+        id: 'liz-1',
+        type: 'lizardman',
+        life: 60,
+        maxLife: 80,
+        carryingNutrient: 20,
+        nestPosition: { x: 3, y: 3 },
+        nestOrientation: 'horizontal',
+      })
+
+      const originalNestPositions = new Map<string, { x: number; y: number } | null>()
+      originalNestPositions.set('liz-1', null)
+
+      const result = processNestEstablishment([monster], originalNestPositions)
+
+      expect(result.monsters[0].carryingNutrient).toBe(20 - NEST_NUTRIENT_COST)
+      expect(result.monsters[0].life).toBe(60 - NEST_LIFE_COST)
+    })
+
+    it('should not deduct cost when nest was already established (non-null → non-null)', () => {
+      const monster = createMonster({
+        id: 'liz-2',
+        type: 'lizardman',
+        life: 60,
+        maxLife: 80,
+        carryingNutrient: 20,
+        nestPosition: { x: 3, y: 3 },
+        nestOrientation: 'horizontal',
+      })
+
+      const originalNestPositions = new Map<string, { x: number; y: number } | null>()
+      originalNestPositions.set('liz-2', { x: 3, y: 3 })
+
+      const result = processNestEstablishment([monster], originalNestPositions)
+
+      expect(result.monsters[0].carryingNutrient).toBe(20)
+      expect(result.monsters[0].life).toBe(60)
+    })
+
+    it('should not deduct cost for monsters without nest (null → null)', () => {
+      const monster = createMonster({
+        id: 'liz-3',
+        type: 'lizardman',
+        life: 60,
+        maxLife: 80,
+        carryingNutrient: 20,
+        nestPosition: null,
+      })
+
+      const originalNestPositions = new Map<string, { x: number; y: number } | null>()
+      originalNestPositions.set('liz-3', null)
+
+      const result = processNestEstablishment([monster], originalNestPositions)
+
+      expect(result.monsters[0].carryingNutrient).toBe(20)
+      expect(result.monsters[0].life).toBe(60)
     })
   })
 })

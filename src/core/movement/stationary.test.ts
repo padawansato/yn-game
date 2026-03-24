@@ -10,6 +10,7 @@ import {
   getDirectionToward,
   calculateStationaryMove,
 } from './stationary'
+import { NEST_NUTRIENT_COST, NEST_LIFE_COST } from '../constants'
 
 function createGrid(width: number, height: number, type: Cell['type'] = 'empty'): Cell[][] {
   return Array.from({ length: height }, () =>
@@ -228,7 +229,7 @@ describe('Stationary Movement', () => {
   describe('calculateStationaryMove', () => {
     it('should establish nest in open area and stay in place', () => {
       const grid = createGrid(8, 8, 'empty')
-      const monster = createMonster({ position: { x: 3, y: 3 }, nestPosition: null })
+      const monster = createMonster({ position: { x: 3, y: 3 }, nestPosition: null, carryingNutrient: NEST_NUTRIENT_COST, life: NEST_LIFE_COST + 1 })
 
       const result = calculateStationaryMove(monster, grid, [], () => 0)
 
@@ -236,6 +237,36 @@ describe('Stationary Movement', () => {
       expect(result.nestPosition).not.toBeNull()
       expect(result.nestOrientation).not.toBeNull()
       expect(result.position).toEqual({ x: 3, y: 3 }) // stays in place when establishing
+    })
+
+    it('should NOT establish nest when carryingNutrient < NEST_NUTRIENT_COST', () => {
+      const grid = createGrid(8, 8, 'empty')
+      const monster = createMonster({
+        position: { x: 3, y: 3 },
+        nestPosition: null,
+        carryingNutrient: 5,
+        life: 80,
+      })
+
+      const result = calculateStationaryMove(monster, grid, [], () => 0)
+
+      // Should fall back to straight movement, not establish nest
+      expect(result.nestPosition).toBeNull()
+    })
+
+    it('should NOT establish nest when life <= NEST_LIFE_COST', () => {
+      const grid = createGrid(8, 8, 'empty')
+      const monster = createMonster({
+        position: { x: 3, y: 3 },
+        nestPosition: null,
+        carryingNutrient: NEST_NUTRIENT_COST,
+        life: NEST_LIFE_COST,
+      })
+
+      const result = calculateStationaryMove(monster, grid, [], () => 0)
+
+      // Should fall back to straight movement, not establish nest
+      expect(result.nestPosition).toBeNull()
     })
 
     it('should patrol by moving one cell at a time', () => {

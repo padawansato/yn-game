@@ -13,6 +13,8 @@ import {
   EGG_HATCH_DURATION,
   MOVEMENT_LIFE_COST,
   MONSTER_CONFIGS,
+  NEST_NUTRIENT_COST,
+  NEST_LIFE_COST,
 } from './constants'
 import type {
   Cell,
@@ -169,6 +171,29 @@ export function applyMovements(plannedMoves: PlannedMove[]): { monsters: Monster
   }))
 
   return { monsters: movedMonsters }
+}
+
+/**
+ * Process nest establishment cost for lizardmen that just built a nest
+ */
+export function processNestEstablishment(
+  monsters: Monster[],
+  originalNestPositions: Map<string, Position | null>
+): { monsters: Monster[]; events: GameEvent[] } {
+  const events: GameEvent[] = []
+  const updated = monsters.map(monster => {
+    const originalNest = originalNestPositions.get(monster.id)
+    if (originalNest === null && monster.nestPosition !== null) {
+      // Nest newly established - deduct cost
+      return {
+        ...monster,
+        carryingNutrient: monster.carryingNutrient - NEST_NUTRIENT_COST,
+        life: monster.life - NEST_LIFE_COST,
+      }
+    }
+    return monster
+  })
+  return { monsters: updated, events }
 }
 
 /**
@@ -672,6 +697,12 @@ export function tick(
     originalPositions.set(monster.id, { ...monster.position })
   }
 
+  // Save original nest positions for nest establishment detection
+  const originalNestPositions = new Map<string, Position | null>()
+  for (const monster of state.monsters) {
+    originalNestPositions.set(monster.id, monster.nestPosition)
+  }
+
   // 1. Calculate all moves
   const plannedMoves = calculateAllMoves(state, randomFn)
 
@@ -681,8 +712,12 @@ export function tick(
   // 3. Apply movements
   const moveResult = applyMovements(resolvedMoves)
 
+  // 3.5. Process nest establishment cost
+  const nestResult = processNestEstablishment(moveResult.monsters, originalNestPositions)
+  allEvents.push(...nestResult.events)
+
   // 4. Process predation (same cell)
-  const predationResult = processPredation(moveResult.monsters, state.grid)
+  const predationResult = processPredation(nestResult.monsters, state.grid)
   allEvents.push(...predationResult.events)
 
   // 5. Process nutrient absorption/release for Nijirigoke (before life decrease)
