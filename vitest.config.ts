@@ -6,8 +6,12 @@ export default defineConfig({
   plugins: [vue()],
   test: {
     globals: true,
-    environment: 'jsdom',
+    environment: 'node',
     include: ['src/**/*.{test,spec}.{js,ts}', 'tests/**/*.{test,spec}.{js,ts}'],
+    environmentMatchGlobs: [
+      ['tests/**', 'jsdom'],
+      ['src/**/*.vue.test.*', 'jsdom'],
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
