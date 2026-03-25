@@ -217,9 +217,7 @@ function startRepl() {
         break
     }
 
-    if (cmd.type !== 'quit') {
-      rl.prompt()
-    }
+    rl.prompt()
   })
 
   rl.on('close', () => {

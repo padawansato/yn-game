@@ -19,7 +19,7 @@ jobs:
           node-version: 20
           cache: pnpm
 
-      - run: pnpm install
+      - run: pnpm install --no-frozen-lockfile
 
       - name: Lint
         run: pnpm lint
@@ -31,4 +31,4 @@ jobs:
         run: pnpm test
 
       - name: Type check
-        run: pnpm exec vue-tsc -b || true
+        run: pnpm exec vue-tsc -b
