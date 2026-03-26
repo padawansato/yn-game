@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { calculateHeroMove } from './ai'
-import type { GameState, Cell, Position } from '../types'
+import type { GameState } from '../types'
 import type { HeroEntity } from './types'
 import { createGameState } from '../simulation'
 

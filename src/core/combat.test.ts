@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { processCombat } from './combat'
-import type { Cell, Monster, Direction, GameEvent } from './types'
+import type { Cell, Monster } from './types'
 import type { HeroEntity } from './hero/types'
 import { HERO_NUTRIENT_DROP } from './constants'
 
