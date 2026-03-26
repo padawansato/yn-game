@@ -16,7 +16,6 @@ import {
   BUD_LIFE_THRESHOLD,
   MONSTER_CONFIGS,
   HERO_SPAWN_START_TICK,
-  HERO_ANNOUNCE_TICKS,
   type GameState,
   type Cell,
   type Monster,
@@ -94,17 +93,16 @@ function handleCellClick(x: number, y: number) {
       return
     }
     const currentTime = gameState.value.gameTime
-    const spawnDelay = HERO_ANNOUNCE_TICKS + 5 // 予告 + 少し猶予
     gameState.value = {
       ...gameState.value,
       demonLordPosition: { x, y },
       heroSpawnConfig: {
         ...gameState.value.heroSpawnConfig,
-        spawnStartTick: currentTime + spawnDelay,
+        spawnStartTick: currentTime, // 即スポーン
       },
     }
     isPlacingDemonLord.value = false
-    events.value.unshift(`[DEMON_LORD_PLACED] 魔王を (${x},${y}) に配置 — 勇者が ${spawnDelay}tick後に来る!`)
+    events.value.unshift(`[DEMON_LORD_PLACED] 魔王を (${x},${y}) に配置 — 勇者が来る!`)
     // 自動再開
     if (isRunning.value) {
       resumeGame()
