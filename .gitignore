@@ -79,6 +79,7 @@ playwright/.cache/
 !.claude/skills/
 !.claude/hooks/
 !.claude/agents/
+!.claude/rules/
 !.claude/settings.json
 
 # pnpm
