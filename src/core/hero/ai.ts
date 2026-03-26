@@ -49,6 +49,14 @@ function posKey(pos: Position): string {
   return `${pos.x},${pos.y}`
 }
 
+function hasMonsterAt(pos: Position, state: GameState): boolean {
+  return state.monsters.some((m) => m.position.x === pos.x && m.position.y === pos.y)
+}
+
+function stayAndFace(hero: HeroEntity, dir: Direction, events: GameEvent[]): { hero: HeroEntity; events: GameEvent[] } {
+  return { hero: { ...hero, direction: dir }, events }
+}
+
 export function calculateHeroMove(
   hero: HeroEntity,
   state: GameState,
@@ -74,6 +82,9 @@ function handleExploring(
 
   // Try forward if passable and unvisited
   if (isPassable(forward, grid) && !hero.visitedCells.has(posKey(forward))) {
+    if (hasMonsterAt(forward, state)) {
+      return stayAndFace(hero, hero.direction, events)
+    }
     return moveToCell(hero, forward, hero.direction, state, events)
   }
 
@@ -89,6 +100,9 @@ function handleExploring(
   if (candidates.length > 0) {
     const idx = Math.floor(randomFn() * candidates.length)
     const chosen = candidates[idx]
+    if (hasMonsterAt(chosen.pos, state)) {
+      return stayAndFace(hero, chosen.dir, events)
+    }
     return moveToCell(hero, chosen.pos, chosen.dir, state, events)
   }
 
@@ -153,6 +167,11 @@ function handleBacktrack(
   const target = newPath[newPath.length - 1]
   const newDir = directionFromTo(hero.position, target)
 
+  // Monster blocking backtrack path - stay and face it
+  if (hasMonsterAt(target, state)) {
+    return stayAndFace(hero, newDir, events)
+  }
+
   return {
     hero: {
       ...hero,
@@ -179,6 +198,11 @@ function handleReturning(
 
   const target = newPath[newPath.length - 1]
   const newDir = directionFromTo(hero.position, target)
+
+  // Monster blocking return path - stay and face it (attack via combat system)
+  if (hasMonsterAt(target, state)) {
+    return stayAndFace(hero, newDir, events)
+  }
 
   const updatedHero: HeroEntity = {
     ...hero,

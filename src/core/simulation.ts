@@ -880,16 +880,22 @@ export function tick(
   }
   currentHeroes = movedHeroes
 
-  // 10.5 Demon lord follows returning hero (dragged behind)
+  // 10.5 Demon lord follows returning hero (dragged one step behind)
   let currentDemonLordPosition = state.demonLordPosition
   const returningHero = currentHeroes.find((h) => h.targetFound && h.state === 'returning')
   if (returningHero) {
-    // Place demon lord at hero's previous position (one step behind)
-    const path = returningHero.pathHistory
-    if (path.length > 0) {
-      currentDemonLordPosition = path[path.length - 1]
+    // Hero's previous position = where hero was before this tick's move
+    // After handleReturning pops pathHistory, the hero moved to path's new tail.
+    // The hero's previous position is one step ahead on the return path = hero's current pos + 1 in original path.
+    // Simplest: use the hero's current position's reverse direction neighbor
+    // But most reliable: track the position the hero just left.
+    // The hero just moved FROM state's hero position TO returningHero.position
+    const prevHero = state.heroes.find((h) => h.id === returningHero.id)
+    if (prevHero && (prevHero.position.x !== returningHero.position.x || prevHero.position.y !== returningHero.position.y)) {
+      currentDemonLordPosition = prevHero.position
     } else {
-      currentDemonLordPosition = returningHero.position
+      // Hero didn't move (blocked by monster) - keep demon lord at current position
+      currentDemonLordPosition = state.demonLordPosition
     }
   }
 
