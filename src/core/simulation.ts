@@ -880,10 +880,17 @@ export function tick(
   }
   currentHeroes = movedHeroes
 
-  // 10.5 Clear demon lord if any hero found it (hero is carrying it away)
+  // 10.5 Demon lord follows returning hero (dragged behind)
   let currentDemonLordPosition = state.demonLordPosition
-  if (currentHeroes.some((h) => h.targetFound)) {
-    currentDemonLordPosition = null
+  const returningHero = currentHeroes.find((h) => h.targetFound && h.state === 'returning')
+  if (returningHero) {
+    // Place demon lord at hero's previous position (one step behind)
+    const path = returningHero.pathHistory
+    if (path.length > 0) {
+      currentDemonLordPosition = path[path.length - 1]
+    } else {
+      currentDemonLordPosition = returningHero.position
+    }
   }
 
   // 11. Process combat
