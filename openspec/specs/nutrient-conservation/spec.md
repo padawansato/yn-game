@@ -7,10 +7,10 @@
 ## Requirements
 
 ### Requirement: Nutrient conservation law
-The system SHALL guarantee that the total nutrient quantity (sum of all Cell.nutrientAmount + all Monster.carryingNutrient) remains constant across all game ticks. The only exceptions are external additions from hero deaths or item destruction.
+The system SHALL guarantee that the total nutrient quantity (sum of all Cell.nutrientAmount + all Monster.carryingNutrient) remains constant across all game ticks. The only exception is external additions from hero deaths: when a hero dies, HERO_NUTRIENT_DROP nutrients SHALL be added to the surrounding 9 cells, increasing the total nutrient count by that amount.
 
 #### Scenario: Conservation across tick
-- **WHEN** a game tick is executed
+- **WHEN** a game tick is executed without hero deaths
 - **THEN** the total nutrients after the tick SHALL equal the total nutrients before the tick
 
 #### Scenario: Conservation across dig
@@ -28,6 +28,10 @@ The system SHALL guarantee that the total nutrient quantity (sum of all Cell.nut
 #### Scenario: Conservation across reproduction
 - **WHEN** a monster reproduces and creates offspring
 - **THEN** the parent's carryingNutrient SHALL be distributed among offspring, and the total nutrients SHALL remain unchanged
+
+#### Scenario: External addition from hero death
+- **WHEN** a hero dies in combat
+- **THEN** HERO_NUTRIENT_DROP nutrients SHALL be added to the surrounding 9 cells (following the same distribution logic as monster death), and the total nutrient count SHALL increase by exactly HERO_NUTRIENT_DROP
 
 ### Requirement: Empty cells can hold nutrients
 Empty cells (type: 'empty') SHALL be capable of holding nutrientAmount as a hidden parameter.
