@@ -40,6 +40,8 @@ export {
   GAJI_REPRO_LIFE_THRESHOLD,
   GAJI_REPRO_LIFE_COST,
   MOYOMOYO_DAMAGE,
+  HERO_SPAWN_START_TICK,
+  HERO_ANNOUNCE_TICKS,
 } from './constants'
 export type { MonsterConfig } from './constants'
 

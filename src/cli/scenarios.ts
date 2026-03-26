@@ -90,6 +90,15 @@ function makeState(grid: Cell[][], monsterSetups: MonsterSetup[]): GameState {
     }
   })
 
+  const heroDefaults = {
+    heroes: [] as import('../core/hero/types').HeroEntity[],
+    entrancePosition: { x: Math.floor(grid[0].length / 2), y: 0 },
+    demonLordPosition: null,
+    heroSpawnConfig: { partySize: 1, spawnStartTick: 100, spawnInterval: 10, heroesSpawned: 0 },
+    nextHeroId: 0,
+    isGameOver: false,
+  }
+
   const totalNutrients = getTotalNutrients({
     grid,
     monsters,
@@ -97,6 +106,7 @@ function makeState(grid: Cell[][], monsterSetups: MonsterSetup[]): GameState {
     digPower: 100,
     gameTime: 0,
     nextMonsterId: 0,
+    ...heroDefaults,
   })
 
   return {
@@ -106,6 +116,7 @@ function makeState(grid: Cell[][], monsterSetups: MonsterSetup[]): GameState {
     digPower: 100,
     gameTime: 0,
     nextMonsterId: monsterIdCounter,
+    ...heroDefaults,
   }
 }
 

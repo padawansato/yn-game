@@ -154,20 +154,22 @@ function scenarioLizardmanEggLaying() {
   // 手動で配置したsoilの養分を上書き（initializeで変わった可能性）
   initializedGrid[4][5] = { type: 'soil', nutrientAmount: 100, magicAmount: 0 }
 
-  const state: GameState = {
+  const baseState: Omit<GameState, 'totalInitialNutrients'> = {
     grid: initializedGrid,
     monsters: [],
-    totalInitialNutrients: getTotalNutrients({
-      grid: initializedGrid,
-      monsters: [],
-      totalInitialNutrients: 0,
-      digPower: 100,
-      gameTime: 0,
-      nextMonsterId: 0,
-    }),
+    heroes: [],
+    entrancePosition: { x: 5, y: 0 },
+    demonLordPosition: null,
+    heroSpawnConfig: { partySize: 1, spawnStartTick: 100, spawnInterval: 10, heroesSpawned: 0 },
     digPower: 100,
     gameTime: 0,
     nextMonsterId: 0,
+    nextHeroId: 0,
+    isGameOver: false,
+  }
+  const state: GameState = {
+    ...baseState,
+    totalInitialNutrients: getTotalNutrients({ ...baseState, totalInitialNutrients: 0 }),
   }
 
   console.log('--- 初期グリッド ---')

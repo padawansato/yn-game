@@ -21,10 +21,21 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
   return {
     grid: createGrid(10, 10),
     monsters: [],
+    heroes: [],
+    entrancePosition: { x: 5, y: 0 },
+    demonLordPosition: { x: 5, y: 9 },
+    heroSpawnConfig: {
+      partySize: 1,
+      spawnStartTick: 100,
+      spawnInterval: 10,
+      heroesSpawned: 0,
+    },
     totalInitialNutrients: 100,
     digPower: 100,
     gameTime: 0,
     nextMonsterId: 0,
+    nextHeroId: 0,
+    isGameOver: false,
     ...overrides,
   }
 }

@@ -372,10 +372,16 @@ describe('Nutrient System', () => {
           createMonster({ carryingNutrient: 5 }),
           createMonster({ id: 'monster-2', carryingNutrient: 3 }),
         ],
+        heroes: [],
+        entrancePosition: { x: 0, y: 0 },
+        demonLordPosition: { x: 1, y: 1 },
+        heroSpawnConfig: { partySize: 1, spawnStartTick: 100, spawnInterval: 10, heroesSpawned: 0 },
         totalInitialNutrients: 100,
         digPower: 100,
         gameTime: 0,
         nextMonsterId: 0,
+        nextHeroId: 0,
+        isGameOver: false,
       }
 
       const total = getTotalNutrients(state)
@@ -391,10 +397,16 @@ describe('Nutrient System', () => {
       const state: GameState = {
         grid,
         monsters: [],
+        heroes: [],
+        entrancePosition: { x: 0, y: 0 },
+        demonLordPosition: { x: 0, y: 0 },
+        heroSpawnConfig: { partySize: 1, spawnStartTick: 100, spawnInterval: 10, heroesSpawned: 0 },
         totalInitialNutrients: 100,
         digPower: 100,
         gameTime: 0,
         nextMonsterId: 0,
+        nextHeroId: 0,
+        isGameOver: false,
       }
 
       expect(isWorldDying(state, 0.1)).toBe(true) // 5 < 100 * 0.1
@@ -407,10 +419,16 @@ describe('Nutrient System', () => {
       const state: GameState = {
         grid,
         monsters: [],
+        heroes: [],
+        entrancePosition: { x: 0, y: 0 },
+        demonLordPosition: { x: 0, y: 0 },
+        heroSpawnConfig: { partySize: 1, spawnStartTick: 100, spawnInterval: 10, heroesSpawned: 0 },
         totalInitialNutrients: 100,
         digPower: 100,
         gameTime: 0,
         nextMonsterId: 0,
+        nextHeroId: 0,
+        isGameOver: false,
       }
 
       expect(isWorldDying(state, 0.1)).toBe(false) // 50 >= 100 * 0.1
