@@ -16,7 +16,6 @@ import {
   BUD_LIFE_THRESHOLD,
   MONSTER_CONFIGS,
   HERO_SPAWN_START_TICK,
-  HERO_ANNOUNCE_TICKS,
   type GameState,
   type Cell,
   type Monster,
