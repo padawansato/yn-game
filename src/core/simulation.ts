@@ -18,6 +18,8 @@ import {
   GAJI_REPRO_LIFE_THRESHOLD,
   GAJI_REPRO_LIFE_COST,
   MOYOMOYO_DAMAGE,
+  HERO_SPAWN_START_TICK,
+  HERO_SPAWN_INTERVAL,
 } from './constants'
 import type {
   Cell,
@@ -36,6 +38,8 @@ import {
   releaseNutrientsOnDeath,
   getSurroundingCells,
 } from './nutrient'
+import { processHeroSpawns, calculateHeroMove } from './hero'
+import { processCombat } from './combat'
 
 const INITIAL_PHASE: Record<MonsterType, MonsterPhase> = {
   nijirigoke: 'mobile',
@@ -777,6 +781,11 @@ export function tick(
   state: GameState,
   randomFn: () => number = Math.random
 ): { state: GameState; events: GameEvent[] } {
+  // Early return if game is over
+  if (state.isGameOver) {
+    return { state, events: [] }
+  }
+
   const allEvents: GameEvent[] = []
 
   // Save original positions for movement detection
@@ -829,13 +838,80 @@ export function tick(
   const phaseResult = processPhaseTransitions(phaseState)
   allEvents.push(...phaseResult.events)
 
+  // === Hero processing (steps 9-12) ===
+  let currentHeroes = [...state.heroes]
+  let currentGrid = phaseResult.grid
+  let currentMonsters = phaseResult.monsters
+  let currentHeroSpawnConfig = state.heroSpawnConfig
+  let currentNextHeroId = state.nextHeroId
+
+  // 9. Process hero spawns
+  const spawnState: GameState = {
+    ...state,
+    grid: currentGrid,
+    monsters: currentMonsters,
+    heroes: currentHeroes,
+    heroSpawnConfig: currentHeroSpawnConfig,
+    nextHeroId: currentNextHeroId,
+  }
+  const spawnResult = processHeroSpawns(spawnState, randomFn)
+  currentHeroes = [...currentHeroes, ...spawnResult.heroes]
+  currentHeroSpawnConfig = spawnResult.heroSpawnConfig
+  currentNextHeroId = spawnResult.nextHeroId
+  allEvents.push(...spawnResult.events)
+
+  // 10. Calculate hero AI moves
+  const movedHeroes: typeof currentHeroes = []
+  for (const hero of currentHeroes) {
+    if (hero.state === 'dead') {
+      continue
+    }
+    const moveState: GameState = {
+      ...state,
+      grid: currentGrid,
+      monsters: currentMonsters,
+      heroes: currentHeroes,
+      entrancePosition: state.entrancePosition,
+      demonLordPosition: state.demonLordPosition,
+    }
+    const moveResult = calculateHeroMove(hero, moveState, randomFn)
+    movedHeroes.push(moveResult.hero)
+    allEvents.push(...moveResult.events)
+  }
+  currentHeroes = movedHeroes
+
+  // 11. Process combat
+  const combatResult = processCombat(currentHeroes, currentMonsters, currentGrid)
+  currentHeroes = combatResult.heroes.filter((h) => h.state !== 'dead')
+  currentMonsters = combatResult.monsters
+  currentGrid = combatResult.grid
+  allEvents.push(...combatResult.events)
+
+  // 12. Process hero return check (HERO_ESCAPED already emitted by AI in step 10)
+  let isGameOver = false
+  for (const hero of currentHeroes) {
+    if (
+      hero.state === 'returning' &&
+      hero.position.x === state.entrancePosition.x &&
+      hero.position.y === state.entrancePosition.y
+    ) {
+      allEvents.push({ type: 'GAME_OVER', reason: 'demon_lord_found' })
+      isGameOver = true
+      break
+    }
+  }
+
   return {
     state: {
       ...state,
-      grid: phaseResult.grid,
-      monsters: phaseResult.monsters,
+      grid: currentGrid,
+      monsters: currentMonsters,
+      heroes: currentHeroes,
+      heroSpawnConfig: currentHeroSpawnConfig,
+      nextHeroId: currentNextHeroId,
       gameTime: state.gameTime + 1,
       nextMonsterId: phaseResult.nextMonsterId,
+      isGameOver,
     },
     events: allEvents,
   }
@@ -1051,12 +1127,24 @@ export function attackMonster(
  * Create initial game state
  * Includes an initial empty cell at the top center for digging entry point
  */
-export function createGameState(width: number, height: number, soilRatio: number = 0.7): GameState {
+export interface CreateGameStateOptions {
+  demonLordPosition?: Position
+}
+
+export function createGameState(
+  width: number,
+  height: number,
+  soilRatio: number = 0.7,
+  options: CreateGameStateOptions = {},
+): GameState {
   const grid: Cell[][] = []
 
   // Calculate entry point position (top center, one row below the wall)
   const entryX = Math.floor(width / 2)
   const entryY = 1
+
+  const entrancePosition: Position = { x: Math.floor(width / 2), y: 0 }
+  const demonLordPosition: Position | null = options.demonLordPosition ?? null
 
   for (let y = 0; y < height; y++) {
     const row: Cell[] = []
@@ -1075,12 +1163,29 @@ export function createGameState(width: number, height: number, soilRatio: number
     grid.push(row)
   }
 
+  // Ensure entrance cell is empty
+  grid[entrancePosition.y][entrancePosition.x] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }
+  if (demonLordPosition) {
+    grid[demonLordPosition.y][demonLordPosition.x] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }
+  }
+
   return {
     grid,
     monsters: [],
+    heroes: [],
+    entrancePosition,
+    demonLordPosition,
+    heroSpawnConfig: {
+      partySize: 1,
+      spawnStartTick: HERO_SPAWN_START_TICK,
+      spawnInterval: HERO_SPAWN_INTERVAL,
+      heroesSpawned: 0,
+    },
     totalInitialNutrients: 0,
     digPower: INITIAL_DIG_POWER,
     gameTime: 0,
     nextMonsterId: 0,
+    nextHeroId: 0,
+    isGameOver: false,
   }
 }

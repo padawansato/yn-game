@@ -95,3 +95,11 @@ export const GAJI_REPRO_LIFE_COST = 5        // life cost per reproduction
 
 // Moyomoyo (flower ranged attack)
 export const MOYOMOYO_DAMAGE = 2  // flower ranged attack damage per tick
+
+// === Hero constants ===
+export const HERO_LIFE = 50
+export const HERO_ATTACK = 5
+export const HERO_SPAWN_START_TICK = 100
+export const HERO_SPAWN_INTERVAL = 10
+export const HERO_ANNOUNCE_TICKS = 20
+export const HERO_NUTRIENT_DROP = 15

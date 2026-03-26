@@ -60,10 +60,21 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
   return {
     grid: createGrid(10, 10),
     monsters: [],
+    heroes: [],
+    entrancePosition: { x: 5, y: 0 },
+    demonLordPosition: { x: 5, y: 9 },
+    heroSpawnConfig: {
+      partySize: 1,
+      spawnStartTick: 100,
+      spawnInterval: 10,
+      heroesSpawned: 0,
+    },
     totalInitialNutrients: 100,
     digPower: 100,
     gameTime: 0,
     nextMonsterId: 0,
+    nextHeroId: 0,
+    isGameOver: false,
     ...overrides,
   }
 }
@@ -870,6 +881,45 @@ describe('Simulation', () => {
 
       expect(state.digPower).toBe(INITIAL_DIG_POWER)
     })
+
+    it('should initialize hero-related fields', () => {
+      const state = createInitialGameState(20, 15)
+
+      expect(state.heroes).toEqual([])
+      expect(state.nextHeroId).toBe(0)
+      expect(state.isGameOver).toBe(false)
+      expect(state.entrancePosition).toEqual({ x: 10, y: 0 })
+      expect(state.demonLordPosition).toBeNull()
+    })
+
+    it('should initialize heroSpawnConfig with defaults', () => {
+      const state = createInitialGameState(20, 15)
+
+      expect(state.heroSpawnConfig.partySize).toBe(1)
+      expect(state.heroSpawnConfig.spawnStartTick).toBe(100)
+      expect(state.heroSpawnConfig.spawnInterval).toBe(10)
+      expect(state.heroSpawnConfig.heroesSpawned).toBe(0)
+    })
+
+    it('should ensure entrance cell is empty', () => {
+      const state = createInitialGameState(20, 15)
+
+      const entranceCell = state.grid[state.entrancePosition.y][state.entrancePosition.x]
+      expect(entranceCell.type).toBe('empty')
+    })
+
+    it('should not place demon lord by default', () => {
+      const state = createInitialGameState(20, 15)
+
+      expect(state.demonLordPosition).toBeNull()
+    })
+
+    it('should accept custom demonLordPosition', () => {
+      const state = createInitialGameState(20, 15, 0.7, { demonLordPosition: { x: 5, y: 5 } })
+
+      expect(state.demonLordPosition).toEqual({ x: 5, y: 5 })
+      expect(state.grid[5][5].type).toBe('empty')
+    })
   })
 
   describe('attackMonster', () => {
@@ -1440,6 +1490,275 @@ describe('Simulation', () => {
 
       const attackEvents = events.filter((e) => e.type === 'MOYOMOYO_ATTACK')
       expect(attackEvents).toHaveLength(0)
+    })
+  })
+
+  describe('Hero integration in tick()', () => {
+    it('should spawn hero when spawnStartTick is reached', () => {
+      const state = createGameState({
+        gameTime: 100,
+        heroSpawnConfig: {
+          partySize: 1,
+          spawnStartTick: 100,
+          spawnInterval: 10,
+          heroesSpawned: 0,
+        },
+      })
+
+      const result = tick(state, () => 0)
+
+      expect(result.state.heroes).toHaveLength(1)
+      // Hero spawns and then moves in the same tick, so check spawn event instead of position
+      expect(result.events.some((e) => e.type === 'HERO_SPAWNED')).toBe(true)
+      expect(result.state.heroSpawnConfig.heroesSpawned).toBe(1)
+    })
+
+    it('should move heroes via AI each tick', () => {
+      // Create a grid with a path down from entrance
+      const grid = createGrid(5, 5)
+      // Make entrance and path empty
+      grid[0][2] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }
+      grid[1][2] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }
+
+      const hero: import('./hero/types').HeroEntity = {
+        kind: 'hero',
+        id: 'hero-1',
+        position: { x: 2, y: 0 },
+        direction: 'down',
+        life: 50,
+        maxLife: 50,
+        attack: 5,
+        attackPattern: 'slash',
+        visitedCells: new Set(['2,0']),
+        pathHistory: [{ x: 2, y: 0 }],
+        state: 'exploring',
+        targetFound: false,
+      }
+
+      const state = createGameState({
+        grid,
+        heroes: [hero],
+        entrancePosition: { x: 2, y: 0 },
+        demonLordPosition: { x: 2, y: 4 },
+        heroSpawnConfig: {
+          partySize: 1,
+          spawnStartTick: 100,
+          spawnInterval: 10,
+          heroesSpawned: 1,
+        },
+      })
+
+      const result = tick(state)
+
+      // Hero should have moved from (2,0)
+      expect(result.state.heroes[0].position).not.toEqual({ x: 2, y: 0 })
+    })
+
+    it('should process combat between hero and monster in tick', () => {
+      // Hero at (2,2) facing right, bud nijirigoke at (3,2) (immobile)
+      // Hero can't move (all neighbors are walls or visited)
+      // Hero's front = (3,2) = monster → combat
+      const grid = createGrid(5, 5, 'wall')
+      grid[2][2] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }
+      grid[2][3] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }
+
+      const hero: import('./hero/types').HeroEntity = {
+        kind: 'hero',
+        id: 'hero-1',
+        position: { x: 2, y: 2 },
+        direction: 'right',
+        life: 50,
+        maxLife: 50,
+        attack: 5,
+        attackPattern: 'slash',
+        visitedCells: new Set(['2,2', '3,2']),
+        pathHistory: [{ x: 2, y: 2 }],
+        state: 'exploring',
+        targetFound: false,
+      }
+
+      // Bud nijirigoke is immobile - won't move during monster phase
+      const monster = createMonster({
+        id: 'monster-1',
+        position: { x: 3, y: 2 },
+        type: 'nijirigoke',
+        phase: 'bud',
+        life: 5,
+        attack: 0,
+        direction: 'left',
+      })
+
+      const state = createGameState({
+        grid,
+        heroes: [hero],
+        monsters: [monster],
+        entrancePosition: { x: 2, y: 0 },
+        demonLordPosition: { x: 4, y: 4 },
+        heroSpawnConfig: {
+          partySize: 1,
+          spawnStartTick: 200,
+          spawnInterval: 10,
+          heroesSpawned: 1,
+        },
+      })
+
+      const result = tick(state)
+
+      const combatEvents = result.events.filter((e) => e.type === 'HERO_COMBAT')
+      expect(combatEvents.length).toBeGreaterThan(0)
+    })
+
+    it('should set isGameOver when hero escapes (returns to entrance)', () => {
+      const grid = createGrid(5, 5)
+      grid[0][2] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }
+
+      // Hero is returning, one step away from entrance
+      const hero: import('./hero/types').HeroEntity = {
+        kind: 'hero',
+        id: 'hero-1',
+        position: { x: 2, y: 1 },
+        direction: 'up',
+        life: 50,
+        maxLife: 50,
+        attack: 5,
+        attackPattern: 'slash',
+        visitedCells: new Set(['2,0', '2,1']),
+        pathHistory: [{ x: 2, y: 0 }, { x: 2, y: 1 }],
+        state: 'returning',
+        targetFound: true,
+      }
+
+      const state = createGameState({
+        grid,
+        heroes: [hero],
+        entrancePosition: { x: 2, y: 0 },
+        demonLordPosition: { x: 2, y: 4 },
+        heroSpawnConfig: {
+          partySize: 1,
+          spawnStartTick: 200,
+          spawnInterval: 10,
+          heroesSpawned: 1,
+        },
+      })
+
+      const result = tick(state)
+
+      expect(result.state.isGameOver).toBe(true)
+      expect(result.events.some((e) => e.type === 'HERO_ESCAPED')).toBe(true)
+      expect(result.events.some((e) => e.type === 'GAME_OVER')).toBe(true)
+    })
+
+    it('should not process tick when isGameOver is true', () => {
+      const state = createGameState({
+        isGameOver: true,
+        gameTime: 50,
+      })
+
+      const result = tick(state)
+
+      // gameTime should not advance
+      expect(result.state.gameTime).toBe(50)
+      expect(result.events).toHaveLength(0)
+    })
+
+    it('should run E2E scenario: spawn → explore → find demon lord → return → GAME_OVER', () => {
+      // Small 5x3 grid: entrance at (2,0), demon lord at (2,2)
+      // Layout: all empty except walls
+      const grid: Cell[][] = [
+        // y=0: wall, wall, empty(entrance), wall, wall
+        [
+          { type: 'wall', nutrientAmount: 0, magicAmount: 0 },
+          { type: 'wall', nutrientAmount: 0, magicAmount: 0 },
+          { type: 'empty', nutrientAmount: 0, magicAmount: 0 },
+          { type: 'wall', nutrientAmount: 0, magicAmount: 0 },
+          { type: 'wall', nutrientAmount: 0, magicAmount: 0 },
+        ],
+        // y=1: wall, wall, empty, wall, wall
+        [
+          { type: 'wall', nutrientAmount: 0, magicAmount: 0 },
+          { type: 'wall', nutrientAmount: 0, magicAmount: 0 },
+          { type: 'empty', nutrientAmount: 0, magicAmount: 0 },
+          { type: 'wall', nutrientAmount: 0, magicAmount: 0 },
+          { type: 'wall', nutrientAmount: 0, magicAmount: 0 },
+        ],
+        // y=2: wall, wall, empty(demon lord), wall, wall
+        [
+          { type: 'wall', nutrientAmount: 0, magicAmount: 0 },
+          { type: 'wall', nutrientAmount: 0, magicAmount: 0 },
+          { type: 'empty', nutrientAmount: 0, magicAmount: 0 },
+          { type: 'wall', nutrientAmount: 0, magicAmount: 0 },
+          { type: 'wall', nutrientAmount: 0, magicAmount: 0 },
+        ],
+      ]
+
+      const state = createGameState({
+        grid,
+        entrancePosition: { x: 2, y: 0 },
+        demonLordPosition: { x: 2, y: 2 },
+        heroSpawnConfig: {
+          partySize: 1,
+          spawnStartTick: 0, // spawn immediately
+          spawnInterval: 10,
+          heroesSpawned: 0,
+        },
+        gameTime: 0,
+      })
+
+      // Tick 0: hero spawns at entrance (2,0) and moves to (2,1) in the same tick
+      let current = tick(state, () => 0)
+      expect(current.state.heroes).toHaveLength(1)
+      expect(current.events.some((e) => e.type === 'HERO_SPAWNED')).toBe(true)
+      expect(current.state.heroes[0].position).toEqual({ x: 2, y: 1 })
+
+      // Tick 1: hero moves to (2,2) - demon lord found, state becomes returning
+      current = tick(current.state, () => 0)
+      expect(current.state.heroes[0].position).toEqual({ x: 2, y: 2 })
+      expect(current.state.heroes[0].state).toBe('returning')
+      expect(current.events.some((e) => e.type === 'DEMON_LORD_FOUND')).toBe(true)
+
+      // Tick 2: hero returns to (2,1)
+      current = tick(current.state, () => 0)
+      expect(current.state.heroes[0].position).toEqual({ x: 2, y: 1 })
+
+      // Tick 3: hero returns to (2,0) entrance → GAME_OVER
+      current = tick(current.state, () => 0)
+      expect(current.state.isGameOver).toBe(true)
+      expect(current.events.some((e) => e.type === 'HERO_ESCAPED')).toBe(true)
+      expect(current.events.some((e) => e.type === 'GAME_OVER')).toBe(true)
+
+      // Tick 4: no processing after game over
+      const afterGameOver = tick(current.state, () => 0)
+      expect(afterGameOver.state.gameTime).toBe(current.state.gameTime)
+      expect(afterGameOver.events).toHaveLength(0)
+    })
+
+    it('should confirm pickaxe attackMonster only accepts Monster type (not Hero)', () => {
+      // attackMonster takes a monsterId string and searches state.monsters
+      // Heroes are in state.heroes, not state.monsters
+      // So pickaxe cannot target heroes by design
+      const state = createGameState({
+        heroes: [{
+          kind: 'hero',
+          id: 'hero-1',
+          position: { x: 2, y: 2 },
+          direction: 'down',
+          life: 50,
+          maxLife: 50,
+          attack: 5,
+          attackPattern: 'slash',
+          visitedCells: new Set(),
+          pathHistory: [],
+          state: 'exploring',
+          targetFound: false,
+        }],
+      })
+
+      // Attempting to attack a hero id via attackMonster should return error (not found in monsters)
+      const result = attackMonster(state, 'hero-1', 5)
+      expect('error' in result).toBe(true)
+      if ('error' in result) {
+        expect(result.error).toBe('Monster not found')
+      }
     })
   })
 })

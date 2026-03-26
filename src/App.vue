@@ -15,6 +15,8 @@ import {
   BUD_NUTRIENT_THRESHOLD,
   BUD_LIFE_THRESHOLD,
   MONSTER_CONFIGS,
+  HERO_SPAWN_START_TICK,
+  HERO_ANNOUNCE_TICKS,
   type GameState,
   type Cell,
   type Monster,
@@ -42,9 +44,24 @@ const gameState = ref<GameState>(createInitialState())
 const events = ref<string[]>([])
 const isRunning = ref(false)
 const isPaused = ref(false)
+const isPlacingDemonLord = ref(false)
+const heroesTriggered = ref(false) // 勇者が呼ばれた（タイマー or 手動）
 
 // Game Loop
+function triggerHeroPhase() {
+  heroesTriggered.value = true
+  isPlacingDemonLord.value = true
+  pauseGame()
+  events.value.unshift(`[HERO_PHASE] 勇者が来る! 魔王を配置してください!`)
+}
+
 function executeTickWithEvents() {
+  // 制限時間到達 → 魔王配置フェーズへ
+  if (!heroesTriggered.value && gameState.value.gameTime >= HERO_SPAWN_START_TICK) {
+    triggerHeroPhase()
+    return
+  }
+
   const randomFn = seededRandom || Math.random
   const result = tick(gameState.value, randomFn)
   result.events.forEach((e) => {
@@ -69,6 +86,32 @@ onUnmounted(() => {
 
 // Actions
 function handleCellClick(x: number, y: number) {
+  // Demon lord placement mode
+  if (isPlacingDemonLord.value) {
+    const cell = gameState.value.grid[y][x]
+    if (cell.type !== 'empty') {
+      events.value.unshift(`[Error] 魔王は空きセルにのみ配置できます`)
+      return
+    }
+    const currentTime = gameState.value.gameTime
+    const spawnDelay = HERO_ANNOUNCE_TICKS + 5 // 予告 + 少し猶予
+    gameState.value = {
+      ...gameState.value,
+      demonLordPosition: { x, y },
+      heroSpawnConfig: {
+        ...gameState.value.heroSpawnConfig,
+        spawnStartTick: currentTime + spawnDelay,
+      },
+    }
+    isPlacingDemonLord.value = false
+    events.value.unshift(`[DEMON_LORD_PLACED] 魔王を (${x},${y}) に配置 — 勇者が ${spawnDelay}tick後に来る!`)
+    // 自動再開
+    if (isRunning.value) {
+      resumeGame()
+    }
+    return
+  }
+
   const result = dig(gameState.value, { x, y })
   if ('error' in result) {
     events.value.unshift(`[Error] ${result.error}`)
@@ -119,6 +162,8 @@ function handleReset() {
   seededRandom = null // 通常モードに戻す
   gameState.value = createInitialState()
   events.value = []
+  heroesTriggered.value = false
+  isPlacingDemonLord.value = false
   initGameLoop()
 }
 
@@ -285,6 +330,15 @@ function makeState(grid: Cell[][], monsterSetups: MonsterSetup[]): GameState {
     }
   })
 
+  const heroDefaults = {
+    heroes: [] as import('./core/hero/types').HeroEntity[],
+    entrancePosition: { x: Math.floor(grid[0].length / 2), y: 0 },
+    demonLordPosition: null,
+    heroSpawnConfig: { partySize: 1, spawnStartTick: 100, spawnInterval: 10, heroesSpawned: 0 },
+    nextHeroId: 0,
+    isGameOver: false,
+  }
+
   const totalNutrients = getTotalNutrients({
     grid,
     monsters,
@@ -292,6 +346,7 @@ function makeState(grid: Cell[][], monsterSetups: MonsterSetup[]): GameState {
     digPower: 100,
     gameTime: 0,
     nextMonsterId: 0,
+    ...heroDefaults,
   })
 
   return {
@@ -301,6 +356,7 @@ function makeState(grid: Cell[][], monsterSetups: MonsterSetup[]): GameState {
     digPower: 100,
     gameTime: 0,
     nextMonsterId: monsterIdCounter,
+    ...heroDefaults,
   }
 }
 
@@ -336,6 +392,20 @@ function formatEvent(e: { type: string; [key: string]: unknown }): string {
       return `${e.parentId} reproduced → ${(e.offspringIds as string[]).length} offspring`
     case 'MONSTER_ATTACKED':
       return `${e.monsterId} hit (dmg=${e.damage}, hp=${e.remainingLife})`
+    case 'HERO_SPAWNED':
+      return `勇者 ${e.heroId} 出現`
+    case 'HERO_PARTY_ANNOUNCED':
+      return `勇者パーティー ${e.partySize}人が接近中!`
+    case 'HERO_COMBAT':
+      return `勇者${e.heroId} vs ${e.monsterId} (勇者dmg=${e.heroDamage}, monster dmg=${e.monsterDamage})`
+    case 'HERO_DIED':
+      return `勇者 ${e.heroId} 撃破!`
+    case 'HERO_ESCAPED':
+      return `勇者 ${e.heroId} が脱出!`
+    case 'DEMON_LORD_FOUND':
+      return `勇者 ${e.heroId} が魔王を発見!`
+    case 'GAME_OVER':
+      return `GAME OVER - 勇者が魔王の情報を持ち帰った!`
     default:
       return e.type
   }
@@ -365,13 +435,34 @@ const ENTITY_ICONS: Record<EntityType, string> = {
   nijirigoke: '苔',
 }
 
+function getHeroesAtCell(x: number, y: number) {
+  return gameState.value.heroes.filter((h) => h.position.x === x && h.position.y === y && h.state !== 'dead')
+}
+
+function isDemonLordCell(x: number, y: number): boolean {
+  const pos = gameState.value.demonLordPosition
+  return pos !== null && pos.x === x && pos.y === y
+}
+
+function isEntranceCell(x: number, y: number): boolean {
+  const pos = gameState.value.entrancePosition
+  return pos.x === x && pos.y === y
+}
+
 function getCellDisplay(cell: Cell, x: number, y: number): string {
+  const heroes = getHeroesAtCell(x, y)
+  if (heroes.length > 0) {
+    return heroes[0].state === 'returning' ? '帰' : '勇'
+  }
+
   const monsters = getMonstersAtCell(x, y)
   const topMonster = getTopMonster(monsters)
-
   if (topMonster) {
     return ENTITY_ICONS[topMonster.type]
   }
+
+  if (isDemonLordCell(x, y)) return '魔'
+  if (isEntranceCell(x, y)) return '門'
 
   switch (cell.type) {
     case 'wall':
@@ -398,6 +489,11 @@ const nestCellSet = computed(() => {
 })
 
 function getCellClass(cell: Cell, x: number, y: number): string {
+  const heroes = getHeroesAtCell(x, y)
+  if (heroes.length > 0) {
+    return `cell hero-cell${heroes[0].state === 'returning' ? ' hero-returning' : ''}`
+  }
+
   const monsters = getMonstersAtCell(x, y)
   const topMonster = getTopMonster(monsters)
   const isNest = nestCellSet.value.has(`${x},${y}`)
@@ -405,6 +501,9 @@ function getCellClass(cell: Cell, x: number, y: number): string {
   if (topMonster) {
     return `cell monster-${topMonster.type}${isNest ? ' nest-cell' : ''}`
   }
+
+  if (isDemonLordCell(x, y)) return `cell demon-lord-cell`
+  if (isEntranceCell(x, y)) return `cell entrance-cell`
 
   if (isNest) {
     return `cell cell-${cell.type} nest-cell`
@@ -414,7 +513,7 @@ function getCellClass(cell: Cell, x: number, y: number): string {
 }
 
 function getOverlapCount(x: number, y: number): number {
-  return getMonstersAtCell(x, y).length
+  return getMonstersAtCell(x, y).length + getHeroesAtCell(x, y).length
 }
 
 const totalNutrients = computed(() => getTotalNutrients(gameState.value))
@@ -499,6 +598,20 @@ function getNutrientLevel(amount: number): 'low' | 'mid' | 'high' | null {
       <button @click="handleReset">
         Reset
       </button>
+      <button
+        v-if="!heroesTriggered"
+        class="summon-hero-btn"
+        @click="triggerHeroPhase()"
+      >
+        勇者を呼ぶ
+      </button>
+    </div>
+
+    <div
+      v-if="isPlacingDemonLord"
+      class="placement-banner"
+    >
+      魔王を配置してください — 空きセルをクリック
     </div>
 
     <div class="scenarios">
@@ -514,9 +627,22 @@ function getNutrientLevel(amount: number): 'low' | 'mid' | 'high' | null {
       </button>
     </div>
 
+    <div
+      v-if="gameState.isGameOver"
+      class="game-over-banner"
+    >
+      GAME OVER
+    </div>
+
     <div class="status">
       <div class="status-row">
         <span>ゲーム時間: {{ gameState.gameTime }}</span>
+        <span
+          v-if="!heroesTriggered"
+          :class="['hero-timer', { 'hero-timer-urgent': HERO_SPAWN_START_TICK - gameState.gameTime <= 20 }]"
+        >
+          勇者到来まで: {{ HERO_SPAWN_START_TICK - gameState.gameTime }}tick
+        </span>
         <span>養分: {{ totalNutrients }} / {{ gameState.totalInitialNutrients }}</span>
         <span :class="['dig-power', { 'dig-power-exhausted': gameState.digPower <= 0 }]">
           掘りパワー: {{ gameState.digPower }}
@@ -531,6 +657,15 @@ function getNutrientLevel(amount: number): 'low' | 'mid' | 'high' | null {
         :key="type"
       >
         {{ type }}: {{ info.count }}匹 (計{{ info.totalLife }}life, 養分{{ info.totalCarrying }})
+      </div>
+      <div
+        v-if="gameState.heroes.length > 0"
+        class="hero-status"
+      >
+        勇者: {{ gameState.heroes.filter(h => h.state !== 'dead').length }}体生存
+        <span v-for="h in gameState.heroes.filter(h => h.state !== 'dead')" :key="h.id" class="hero-badge">
+          {{ h.id }} (HP:{{ h.life }}/{{ h.maxLife }} {{ h.state === 'returning' ? '帰還中!' : '探索中' }})
+        </span>
       </div>
     </div>
 
@@ -570,6 +705,10 @@ function getNutrientLevel(amount: number): 'low' | 'mid' | 'high' | null {
       <span class="legend-item"><span class="cell monster-gajigajimushi">虫</span> ガジガジムシ</span>
       <span class="legend-item"><span class="cell monster-lizardman">蜥</span> リザードマン</span>
       <span class="legend-item"><span class="cell cell-empty nest-cell" /> 巣</span>
+      <span class="legend-item"><span class="cell hero-cell">勇</span> 勇者</span>
+      <span class="legend-item"><span class="cell hero-cell hero-returning">帰</span> 勇者(帰還中)</span>
+      <span class="legend-item"><span class="cell entrance-cell">門</span> 入口</span>
+      <span class="legend-item"><span class="cell demon-lord-cell">魔</span> 魔王</span>
     </div>
 
     <div class="legend nutrient-legend">
@@ -817,6 +956,105 @@ h1 {
 .monster-lizardman {
   background: #4d1a1a;
   color: #ef5350;
+}
+
+.summon-hero-btn {
+  background: #4d4d1a;
+  color: #ffd700;
+  border: 1px solid #ffd700;
+  font-weight: bold;
+}
+
+.summon-hero-btn:hover {
+  background: #6a6a2a;
+}
+
+.hero-timer {
+  color: #88aaff;
+}
+
+.hero-timer-urgent {
+  color: #ff4444;
+  font-weight: bold;
+  animation: blink 0.5s ease-in-out infinite;
+}
+
+.placement-banner {
+  background: #4d1a4d;
+  color: #ff44ff;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  border: 2px solid #ff44ff;
+  animation: placement-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes placement-pulse {
+  0%, 100% { border-color: #ff44ff; }
+  50% { border-color: #aa22aa; }
+}
+
+.hero-cell {
+  background: #4d4d1a;
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.hero-returning {
+  background: #4d3a1a;
+  color: #ff8c00;
+  animation: hero-blink 0.5s ease-in-out infinite;
+}
+
+@keyframes hero-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.entrance-cell {
+  background: #2a2a4d;
+  color: #88aaff;
+}
+
+.demon-lord-cell {
+  background: #4d1a4d;
+  color: #ff44ff;
+  font-weight: bold;
+}
+
+.game-over-banner {
+  background: #c62828;
+  color: #fff;
+  text-align: center;
+  font-size: 2rem;
+  font-weight: bold;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  animation: game-over-pulse 1s ease-in-out infinite;
+}
+
+@keyframes game-over-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+.hero-status {
+  color: #ffd700;
+  margin-top: 0.25rem;
+}
+
+.hero-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.4rem;
+  background: #3a3a1a;
+  border: 1px solid #ffd700;
+  border-radius: 4px;
+  font-size: 0.8rem;
 }
 
 .nest-cell {
