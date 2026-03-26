@@ -880,6 +880,12 @@ export function tick(
   }
   currentHeroes = movedHeroes
 
+  // 10.5 Clear demon lord if any hero found it (hero is carrying it away)
+  let currentDemonLordPosition = state.demonLordPosition
+  if (currentHeroes.some((h) => h.targetFound)) {
+    currentDemonLordPosition = null
+  }
+
   // 11. Process combat
   const combatResult = processCombat(currentHeroes, currentMonsters, currentGrid)
   currentHeroes = combatResult.heroes.filter((h) => h.state !== 'dead')
@@ -907,6 +913,7 @@ export function tick(
       grid: currentGrid,
       monsters: currentMonsters,
       heroes: currentHeroes,
+      demonLordPosition: currentDemonLordPosition,
       heroSpawnConfig: currentHeroSpawnConfig,
       nextHeroId: currentNextHeroId,
       gameTime: state.gameTime + 1,
