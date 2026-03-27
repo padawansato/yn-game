@@ -532,7 +532,7 @@ describe('Simulation', () => {
         id: 'm1',
         position: { x: 2, y: 2 },
         direction: 'right',
-        carryingNutrient: 5,
+        carryingNutrient: 9, // >= NUTRIENT_RELEASE_THRESHOLD(8)
       })
 
       const result = processNutrientInteractions([monster], grid)
@@ -1046,7 +1046,7 @@ describe('Simulation', () => {
           id: 'm1',
           type: 'nijirigoke',
           phase: 'flower',
-          life: 2, // will die with 2x drain
+          life: 1, // will reach 0 with 1/tick drain
           carryingNutrient: 3,
         })
         const state = createGameState({ grid, monsters: [monster] })

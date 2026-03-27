@@ -456,6 +456,15 @@ function getCellDisplay(cell: Cell, x: number, y: number): string {
   const monsters = getMonstersAtCell(x, y)
   const topMonster = getTopMonster(monsters)
   if (topMonster) {
+    // ニジリゴケのフェーズ別アイコン
+    if (topMonster.type === 'nijirigoke') {
+      switch (topMonster.phase) {
+        case 'bud': return '蕾'
+        case 'flower': return '花'
+        case 'withered': return '枯'
+        default: return '苔'
+      }
+    }
     return ENTITY_ICONS[topMonster.type]
   }
 
@@ -497,6 +506,10 @@ function getCellClass(cell: Cell, x: number, y: number): string {
   const isNest = nestCellSet.value.has(`${x},${y}`)
 
   if (topMonster) {
+    // ニジリゴケのフェーズ別クラス
+    if (topMonster.type === 'nijirigoke' && topMonster.phase !== 'mobile') {
+      return `cell nijirigoke-${topMonster.phase}${isNest ? ' nest-cell' : ''}`
+    }
     return `cell monster-${topMonster.type}${isNest ? ' nest-cell' : ''}`
   }
 
@@ -661,7 +674,11 @@ function getNutrientLevel(amount: number): 'low' | 'mid' | 'high' | null {
         class="hero-status"
       >
         勇者: {{ gameState.heroes.filter(h => h.state !== 'dead').length }}体生存
-        <span v-for="h in gameState.heroes.filter(h => h.state !== 'dead')" :key="h.id" class="hero-badge">
+        <span
+          v-for="h in gameState.heroes.filter(h => h.state !== 'dead')"
+          :key="h.id"
+          class="hero-badge"
+        >
           {{ h.id }} (HP:{{ h.life }}/{{ h.maxLife }} {{ h.state === 'returning' ? '帰還中!' : '探索中' }})
         </span>
       </div>
@@ -700,6 +717,9 @@ function getNutrientLevel(amount: number): 'low' | 'mid' | 'high' | null {
       <span class="legend-item"><span class="cell cell-soil">土</span> 土(クリックでdig)</span>
       <span class="legend-item"><span class="cell cell-empty" /> 空</span>
       <span class="legend-item"><span class="cell monster-nijirigoke">苔</span> ニジリゴケ</span>
+      <span class="legend-item"><span class="cell nijirigoke-bud">蕾</span> 蕾</span>
+      <span class="legend-item"><span class="cell nijirigoke-flower">花</span> 花</span>
+      <span class="legend-item"><span class="cell nijirigoke-withered">枯</span> 枯</span>
       <span class="legend-item"><span class="cell monster-gajigajimushi">虫</span> ガジガジムシ</span>
       <span class="legend-item"><span class="cell monster-lizardman">蜥</span> リザードマン</span>
       <span class="legend-item"><span class="cell cell-empty nest-cell" /> 巣</span>
@@ -939,6 +959,27 @@ h1 {
 .cell-empty {
   background: #1a1a1a;
   cursor: default;
+}
+
+.nijirigoke-bud {
+  background: #3a3a00;
+  color: #cccc00;
+}
+
+.nijirigoke-flower {
+  background: #3a1a2a;
+  color: #ff69b4;
+  animation: flower-glow 1s ease-in-out infinite;
+}
+
+@keyframes flower-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.nijirigoke-withered {
+  background: #2a2a2a;
+  color: #888888;
 }
 
 .monster-nijirigoke {

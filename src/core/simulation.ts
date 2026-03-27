@@ -3,7 +3,6 @@ import {
   INITIAL_DIG_POWER,
   NUTRIENT_CARRY_CAPACITY,
   BUD_NUTRIENT_THRESHOLD,
-  BUD_LIFE_THRESHOLD,
   FLOWER_NUTRIENT_THRESHOLD,
   PUPA_NUTRIENT_THRESHOLD,
   PUPA_DURATION,
@@ -422,8 +421,7 @@ function processNijirigokePhase(
   // mobile → bud
   if (
     phase === 'mobile' &&
-    monster.carryingNutrient >= BUD_NUTRIENT_THRESHOLD &&
-    monster.life <= BUD_LIFE_THRESHOLD
+    monster.carryingNutrient >= BUD_NUTRIENT_THRESHOLD
   ) {
     events.push({
       type: 'PHASE_TRANSITION',
@@ -445,9 +443,9 @@ function processNijirigokePhase(
     return { monster: { ...monster, phase: 'flower', phaseTickCounter: 0 }, grid }
   }
 
-  // flower: accelerated life drain (2x normal rate) + transition to withered
+  // flower: life drain at normal rate + transition to withered
   if (phase === 'flower') {
-    const newLife = monster.life - 2
+    const newLife = monster.life - MOVEMENT_LIFE_COST
     if (newLife <= 0) {
       events.push({
         type: 'PHASE_TRANSITION',

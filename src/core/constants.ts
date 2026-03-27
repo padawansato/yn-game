@@ -14,7 +14,7 @@ export const MONSTER_CONFIGS: Record<MonsterType, MonsterConfig> = {
   nijirigoke: {
     type: 'nijirigoke',
     pattern: 'straight',
-    life: 16,
+    life: 24,
     attack: 0,
     predationTargets: [],
     canCarryNutrients: true,
@@ -41,7 +41,7 @@ export const MONSTER_CONFIGS: Record<MonsterType, MonsterConfig> = {
 export const NUTRIENT_CARRY_CAPACITY = 10
 
 // Threshold for Nijirigoke to release nutrients (release when >= this amount)
-export const NUTRIENT_RELEASE_THRESHOLD = 4
+export const NUTRIENT_RELEASE_THRESHOLD = 8
 
 // Hunger threshold (30% of maxLife)
 export const HUNGER_THRESHOLD_RATIO = 0.3
@@ -71,13 +71,13 @@ export const PICKAXE_DAMAGE = 5
 // === Metamorphosis thresholds ===
 
 // Nijirigoke (コケ類) lifecycle
-export const BUD_NUTRIENT_THRESHOLD = 6 // mobile → bud: carryingNutrient >= threshold
-export const BUD_LIFE_THRESHOLD = 8 // mobile → bud: life <= threshold
+export const BUD_NUTRIENT_THRESHOLD = 4 // mobile → bud: carryingNutrient >= threshold
+export const BUD_LIFE_THRESHOLD = 16 // mobile → bud: life <= threshold
 export const FLOWER_NUTRIENT_THRESHOLD = 8 // bud → flower: carryingNutrient >= threshold
 
 // Gajigajimushi (ムシ類) lifecycle
 export const PUPA_NUTRIENT_THRESHOLD = 5 // larva → pupa: carryingNutrient >= threshold
-export const PUPA_DURATION = 10 // pupa → adult: ticks to wait
+export const PUPA_DURATION = 6 // pupa → adult: ticks to wait
 
 // Lizardman (トカゲ類) lifecycle
 export const LAYING_NUTRIENT_THRESHOLD = 5 // normal/nesting → laying: carryingNutrient >= threshold
@@ -90,7 +90,7 @@ export const NEST_NUTRIENT_COST = 14   // nutrients consumed when building a nes
 export const NEST_LIFE_COST = 2        // life consumed when building a nest
 
 // Gajigajimushi reproduction
-export const GAJI_REPRO_LIFE_THRESHOLD = 10  // minimum life to reproduce
+export const GAJI_REPRO_LIFE_THRESHOLD = 6  // minimum life to reproduce
 export const GAJI_REPRO_LIFE_COST = 5        // life cost per reproduction
 
 // Moyomoyo (flower ranged attack)
