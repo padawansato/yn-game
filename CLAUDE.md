@@ -223,6 +223,12 @@ verify → spec変更 → **tasks更新を忘れずに** → 実装 → 再verif
 - 手動でarchiveフォルダに移動しない（specが同期されない）
 - `openspec change show <name> --json --deltas-only`で診断可能
 
+## ルール（自動読み込み）
+
+`.claude/rules/` 以下は自動で読み込まれる。特に重要:
+- `testing.md` — TDD・ライフサイクル統合テスト・コミット前チェックリスト
+- `versioning.md` — Semantic Versioning・マージ後タグ付け
+
 ## その他
 ### ファイル削除
 rm -rf ではなく mv ~/.Trash を推奨
