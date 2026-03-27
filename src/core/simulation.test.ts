@@ -791,9 +791,9 @@ describe('Simulation', () => {
 
     it('should cap carryingNutrient at NUTRIENT_CARRY_CAPACITY and distribute surplus', () => {
       const grid = createGrid(10, 10, 'soil')
-      // lizardman (nutrient >= 17): life=min(25,80)=25, remaining=0, carried=0
-      // Use nutrient=100 to test carry cap: life=min(100,80)=80, remaining=20, carried=min(20,10)=10, surplus=10
-      grid[5][5].nutrientAmount = 100
+      // lizardman (nutrient >= 17): life=min(25,120)=25, remaining=0, carried=0
+      // Use nutrient=140 to test carry cap: life=min(140,120)=120, remaining=20, carried=min(20,10)=10, surplus=10
+      grid[5][5].nutrientAmount = 140
       grid[5][4].type = 'empty'
       const state = createGameState({ grid })
 
@@ -802,8 +802,8 @@ describe('Simulation', () => {
       expect('error' in result).toBe(false)
       if (!('error' in result)) {
         expect(result.state.monsters[0].type).toBe('lizardman')
-        expect(result.state.monsters[0].life).toBe(80) // min(100, 80) = 80
-        expect(result.state.monsters[0].carryingNutrient).toBe(10) // min(100-80, 10) = 10
+        expect(result.state.monsters[0].life).toBe(120) // min(140, 120) = 120
+        expect(result.state.monsters[0].carryingNutrient).toBe(10) // min(140-120, 10) = 10
         // surplus 10 distributed to surrounding cells
       }
     })
@@ -1138,7 +1138,7 @@ describe('Simulation', () => {
         const result = processPhaseTransitions(state)
 
         expect(result.monsters[0].phase).toBe('normal')
-        expect(result.monsters[0].life).toBe(80) // lizardman config life
+        expect(result.monsters[0].life).toBe(120) // lizardman config life
         expect(result.monsters[0].carryingNutrient).toBe(5) // preserved
         expect(result.events.some((e) => e.type === 'EGG_HATCHED')).toBe(true)
       })
@@ -1267,7 +1267,7 @@ describe('Simulation', () => {
 
       it('should give lizardman nutrient-based life with excess as carryingNutrient', () => {
         const grid = createGrid(10, 10, 'soil')
-        grid[5][5].nutrientAmount = 90 // spawns lizardman: life=min(90,80)=80, remaining=10, carried=10
+        grid[5][5].nutrientAmount = 140 // spawns lizardman: life=min(140,120)=120, remaining=20, carried=10
         grid[5][4].type = 'empty'
         const state = createGameState({ grid })
 
@@ -1275,7 +1275,7 @@ describe('Simulation', () => {
 
         expect('error' in result).toBe(false)
         if (!('error' in result)) {
-          expect(result.state.monsters[0].life).toBe(80)
+          expect(result.state.monsters[0].life).toBe(120)
           expect(result.state.monsters[0].carryingNutrient).toBe(10)
         }
       })
@@ -1288,7 +1288,7 @@ describe('Simulation', () => {
         id: 'liz-1',
         type: 'lizardman',
         life: 60,
-        maxLife: 80,
+        maxLife: 120,
         carryingNutrient: 20,
         nestPosition: { x: 3, y: 3 },
         nestOrientation: 'horizontal',
@@ -1308,7 +1308,7 @@ describe('Simulation', () => {
         id: 'liz-2',
         type: 'lizardman',
         life: 60,
-        maxLife: 80,
+        maxLife: 120,
         carryingNutrient: 20,
         nestPosition: { x: 3, y: 3 },
         nestOrientation: 'horizontal',
@@ -1328,7 +1328,7 @@ describe('Simulation', () => {
         id: 'liz-3',
         type: 'lizardman',
         life: 60,
-        maxLife: 80,
+        maxLife: 120,
         carryingNutrient: 20,
         nestPosition: null,
       })
@@ -1468,9 +1468,9 @@ describe('Simulation', () => {
         type: 'lizardman',
         phase: 'normal',
         position: { x: 3, y: 2 },
-        life: 80,
-        maxLife: 80,
-        attack: 8,
+        life: 120,
+        maxLife: 120,
+        attack: 15,
         predationTargets: ['nijirigoke', 'gajigajimushi'],
       })
       // Another nijirigoke should also not be targeted
@@ -1485,7 +1485,7 @@ describe('Simulation', () => {
       const events: GameEvent[] = []
       const result = applyMoyomoyoAttacks([flower, lizard, otherKoke], grid, events)
 
-      expect(result.monsters.find((m) => m.id === 'liz-1')!.life).toBe(80)
+      expect(result.monsters.find((m) => m.id === 'liz-1')!.life).toBe(120)
       expect(result.monsters.find((m) => m.id === 'koke-2')!.life).toBe(10)
 
       const attackEvents = events.filter((e) => e.type === 'MOYOMOYO_ATTACK')

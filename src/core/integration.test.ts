@@ -228,7 +228,7 @@ describe('Integration Tests', () => {
       expect(starvationEvents).toBe(1)
     })
 
-    it('should release nutrients to adjacent soil on predation', () => {
+    it('should transfer prey nutrients to predator on predation', () => {
       // Create grid with soil surrounding predation point
       const grid = createGrid(10, 10, 'soil')
       grid[5][5].type = 'empty' // predation position
@@ -278,17 +278,12 @@ describe('Integration Tests', () => {
       const result = tick(state)
       state = result.state
 
-      // Nutrients released to surrounding 9 cells (8 adjacent + center), excluding walls
-      // Position (5,5) has mixed soil/empty neighbors
-      let totalReleased = 0
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          totalReleased += state.grid[5 + dy][5 + dx].nutrientAmount
-        }
-      }
-
-      // All 8 nutrients should be conserved across surrounding cells
-      expect(totalReleased).toBe(8)
+      // Prey's nutrients (8) should be transferred to predator
+      expect(state.monsters).toHaveLength(1)
+      expect(state.monsters[0].type).toBe('gajigajimushi')
+      // carryingNutrient: 0 (initial) + 8 (from prey) = 8
+      // gajigajimushi uses life for movement cost, not carryingNutrient
+      expect(state.monsters[0].carryingNutrient).toBe(8)
     })
 
     it('should continue ticking after all monsters die', () => {

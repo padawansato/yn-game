@@ -222,7 +222,7 @@ describe('Predation System', () => {
       expect(result.events).toHaveLength(4) // 2 predations * 2 events each
     })
 
-    it('should release prey nutrients to adjacent soil on death', () => {
+    it('should transfer prey nutrients to predator on death', () => {
       const grid = createGrid(10, 10, 'soil')
       grid[5][5].type = 'empty' // predation position
 
@@ -231,6 +231,7 @@ describe('Predation System', () => {
         type: 'gajigajimushi',
         position: { x: 5, y: 5 },
         predationTargets: ['nijirigoke'],
+        carryingNutrient: 2,
       })
       const prey = createMonster({
         id: 'prey',
@@ -241,14 +242,17 @@ describe('Predation System', () => {
 
       const result = processPredation([predator, prey], grid)
 
-      // Nutrients distributed to surrounding 9 cells (conservation law)
-      let total = 0
+      // Prey's nutrients transferred to predator (2 + 8 = 10)
+      expect(result.monsters[0].carryingNutrient).toBe(10)
+
+      // No nutrients released to grid
+      let totalGrid = 0
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
-          total += result.grid[5 + dy][5 + dx].nutrientAmount
+          totalGrid += result.grid[5 + dy][5 + dx].nutrientAmount
         }
       }
-      expect(total).toBe(8)
+      expect(totalGrid).toBe(0)
     })
 
     it('should not affect monsters at different positions', () => {

@@ -30,8 +30,8 @@ export const MONSTER_CONFIGS: Record<MonsterType, MonsterConfig> = {
   lizardman: {
     type: 'lizardman',
     pattern: 'stationary',
-    life: 80,
-    attack: 8,
+    life: 120,
+    attack: 15,
     predationTargets: ['nijirigoke', 'gajigajimushi'],
     canCarryNutrients: false,
   },

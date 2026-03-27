@@ -1,5 +1,4 @@
 import type { Cell, GameEvent, Monster, Position } from './types'
-import { releaseNutrientsOnDeath } from './nutrient'
 
 export interface PredationResult {
   predator: Monster
@@ -55,7 +54,9 @@ export function applyPredation(predator: Monster, prey: Monster): PredationResul
 
   // Life recovery (capped at maxLife)
   const newLife = Math.min(predator.maxLife, predator.life + prey.life)
-  const updatedPredator: Monster = { ...predator, life: newLife }
+  // Nutrient transfer: predator absorbs prey's carried nutrients
+  const newNutrient = predator.carryingNutrient + prey.carryingNutrient
+  const updatedPredator: Monster = { ...predator, life: newLife, carryingNutrient: newNutrient }
 
   // Emit predation event
   events.push({
@@ -94,7 +95,7 @@ export function processPredation(
   const events: GameEvent[] = []
   const deadMonsterIds = new Set<string>()
   const updatedMonsters = new Map<string, Monster>()
-  let currentGrid = grid
+  const currentGrid = grid
 
   // Find all unique positions with multiple monsters
   const positionMap = new Map<string, Monster[]>()
@@ -125,10 +126,7 @@ export function processPredation(
           deadMonsterIds.add(potentialPrey.id)
           events.push(...result.events)
 
-          // Release prey's nutrients to adjacent soil
-          if (potentialPrey.carryingNutrient > 0) {
-            currentGrid = releaseNutrientsOnDeath(potentialPrey, currentGrid)
-          }
+          // Prey's nutrients transferred to predator (no grid release needed)
         }
       }
     }
