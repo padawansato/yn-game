@@ -114,7 +114,7 @@ export function processCombat(
   }
 
   // Phase 2: Apply damage
-  let updatedHeroes = heroes.map((hero) => {
+  const updatedHeroes = heroes.map((hero) => {
     const dmg = heroDamage.get(hero.id)
     if (dmg) {
       const newLife = hero.life - dmg
