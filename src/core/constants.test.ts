@@ -28,11 +28,11 @@ describe('Constants', () => {
       expect(config.predationTargets).toEqual(['nijirigoke'])
     })
 
-    it('Lizardman should have stationary pattern and life=80', () => {
+    it('Lizardman should have stationary pattern and life=120', () => {
       const config = MONSTER_CONFIGS.lizardman
       expect(config.pattern).toBe('stationary')
-      expect(config.life).toBe(80)
-      expect(config.attack).toBe(8)
+      expect(config.life).toBe(120)
+      expect(config.attack).toBe(15)
       expect(config.predationTargets).toEqual(['nijirigoke', 'gajigajimushi'])
     })
   })

@@ -1,4 +1,7 @@
 # yn-game
+## 選択肢提示
+ユーザーに選択肢を提示するときは、ユーザーが数字もしくはy/n その他で返答できるように聞きなさい。
+あるいは、記述式
 
 ## 批評的思考
 
@@ -219,6 +222,12 @@ verify → spec変更 → **tasks更新を忘れずに** → 実装 → 再verif
 #### 注意点
 - 手動でarchiveフォルダに移動しない（specが同期されない）
 - `openspec change show <name> --json --deltas-only`で診断可能
+
+## ルール（自動読み込み）
+
+`.claude/rules/` 以下は自動で読み込まれる。特に重要:
+- `testing.md` — TDD・ライフサイクル統合テスト・コミット前チェックリスト
+- `versioning.md` — Semantic Versioning・マージ後タグ付け
 
 ## その他
 ### ファイル削除
