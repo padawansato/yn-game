@@ -5,7 +5,7 @@ The system SHALL define three monster types with distinct attributes, movement p
 
 #### Scenario: Nijirigoke (Moss) - Straight type
 - **WHEN** a Nijirigoke is created
-- **THEN** it SHALL have movementPattern="straight", life=16, canCarryNutrients=true, predationTarget=none, phase="mobile"
+- **THEN** it SHALL have movementPattern="straight", life=24, canCarryNutrients=true, predationTarget=none, phase="mobile"
 
 #### Scenario: Gajigajimushi (Insect) - Refraction type
 - **WHEN** a Gajigajimushi is created
@@ -13,7 +13,7 @@ The system SHALL define three monster types with distinct attributes, movement p
 
 #### Scenario: Lizardman - Stationary type
 - **WHEN** a Lizardman is created
-- **THEN** it SHALL have movementPattern="stationary", life=80, attack=8, predationTarget=["nijirigoke", "gajigajimushi"], phase="normal"
+- **THEN** it SHALL have movementPattern="stationary", life=120, attack=15, predationTarget=["nijirigoke", "gajigajimushi"], phase="normal"
 
 ### Requirement: Life decreases with movement
 Monsters SHALL lose life when performing movement actions, unless their current phase exempts them.
