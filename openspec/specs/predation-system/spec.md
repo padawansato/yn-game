@@ -45,16 +45,16 @@ Predators SHALL recover life when eating prey.
 - **WHEN** predation would increase life above maximum
 - **THEN** life SHALL be capped at the monster's maximum life value
 
-### Requirement: Prey removal
-The system SHALL remove prey from the game when eaten, and release nutrients per the conservation law.
+### Requirement: Prey removal and nutrient transfer
+The system SHALL remove prey from the game when eaten, and transfer its carried nutrients to the predator.
 
 #### Scenario: Prey death
 - **WHEN** predation occurs
 - **THEN** the prey SHALL be immediately removed from the grid
 
-#### Scenario: Nutrient release on predation
+#### Scenario: Nutrient transfer to predator
 - **WHEN** a monster carrying nutrients is eaten
-- **THEN** the nutrients SHALL be distributed to surrounding 9 cells (8 adjacent + center), excluding wall cells, following the conservation law
+- **THEN** the prey's carryingNutrient SHALL be added to the predator's carryingNutrient (nutrients are transferred, not released to grid)
 
 ### Requirement: Predation event emission
 The system SHALL emit events for predation occurrences.

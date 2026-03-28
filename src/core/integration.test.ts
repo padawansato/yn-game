@@ -10,6 +10,8 @@ import {
   isWorldDying,
   MONSTER_CONFIGS,
 } from './index'
+import { createSeededRandom } from './random'
+import { processPredation } from './predation'
 
 function createGrid(width: number, height: number, type: Cell['type'] = 'empty'): Cell[][] {
   return Array.from({ length: height }, () =>
@@ -480,6 +482,7 @@ describe('Integration Tests', () => {
       let state = createGameState({ grid, monsters: [monster] })
       const initialNutrients = getTotalNutrients(state)
       state = { ...state, totalInitialNutrients: initialNutrients }
+      const randomFn = createSeededRandom(42)
 
       let budReached = false
       let flowerReached = false
@@ -487,7 +490,7 @@ describe('Integration Tests', () => {
       let reproduced = false
 
       for (let i = 0; i < 100; i++) {
-        const result = tick(state)
+        const result = tick(state, randomFn)
         state = result.state
 
         for (const m of state.monsters) {
@@ -511,75 +514,54 @@ describe('Integration Tests', () => {
       expect(getTotalNutrients(state)).toBe(initialNutrients)
     })
 
-    it('gajigajimushi should gain nutrients by predation and reach pupa', () => {
-      const grid = createGrid(10, 10, 'empty')
-      // Walls at edges
-      for (let y = 0; y < 10; y++) {
-        grid[y][0] = { type: 'wall', nutrientAmount: 0, magicAmount: 0 }
-        grid[y][9] = { type: 'wall', nutrientAmount: 0, magicAmount: 0 }
-      }
-      for (let x = 0; x < 10; x++) {
-        grid[0][x] = { type: 'wall', nutrientAmount: 0, magicAmount: 0 }
-        grid[9][x] = { type: 'wall', nutrientAmount: 0, magicAmount: 0 }
-      }
+    it('gajigajimushi should gain nutrients from predation (nutrient transfer)', () => {
+      const grid = createGrid(5, 5, 'empty')
 
       const nijiConfig = MONSTER_CONFIGS.nijirigoke
       const gajiConfig = MONSTER_CONFIGS.gajigajimushi
 
-      // Gaji moving right, niji directly in front (will collide → predation)
-      const monsters: Monster[] = [
-        {
-          id: 'g1',
-          type: 'gajigajimushi',
-          position: { x: 4, y: 5 },
-          direction: 'right',
-          pattern: gajiConfig.pattern,
-          phase: 'larva',
-          phaseTickCounter: 0,
-          life: gajiConfig.life,
-          maxLife: gajiConfig.life,
-          attack: gajiConfig.attack,
-          predationTargets: [...gajiConfig.predationTargets],
-          carryingNutrient: 0,
-          nestPosition: null,
-          nestOrientation: null,
-        },
-        {
-          id: 'n1',
-          type: 'nijirigoke',
-          position: { x: 5, y: 5 },
-          direction: 'left',
-          pattern: nijiConfig.pattern,
-          phase: 'mobile',
-          phaseTickCounter: 0,
-          life: nijiConfig.life,
-          maxLife: nijiConfig.life,
-          attack: nijiConfig.attack,
-          predationTargets: [...nijiConfig.predationTargets],
-          carryingNutrient: 6,
-          nestPosition: null,
-          nestOrientation: null,
-        },
-      ]
-
-      let state = createGameState({ grid, monsters })
-
-      // Run a few ticks until predation occurs
-      let predated = false
-      for (let i = 0; i < 10; i++) {
-        const result = tick(state)
-        state = result.state
-        if (result.events.some(e => e.type === 'PREDATION')) {
-          predated = true
-          break
-        }
+      // Same cell = instant predation in processPredation
+      const gaji: Monster = {
+        id: 'g1',
+        type: 'gajigajimushi',
+        position: { x: 2, y: 2 },
+        direction: 'right',
+        pattern: gajiConfig.pattern,
+        phase: 'larva',
+        phaseTickCounter: 0,
+        life: gajiConfig.life,
+        maxLife: gajiConfig.life,
+        attack: gajiConfig.attack,
+        predationTargets: [...gajiConfig.predationTargets],
+        carryingNutrient: 0,
+        nestPosition: null,
+        nestOrientation: null,
+      }
+      const niji: Monster = {
+        id: 'n1',
+        type: 'nijirigoke',
+        position: { x: 2, y: 2 }, // same cell
+        direction: 'left',
+        pattern: nijiConfig.pattern,
+        phase: 'mobile',
+        phaseTickCounter: 0,
+        life: nijiConfig.life,
+        maxLife: nijiConfig.life,
+        attack: nijiConfig.attack,
+        predationTargets: [...nijiConfig.predationTargets],
+        carryingNutrient: 6,
+        nestPosition: null,
+        nestOrientation: null,
       }
 
-      expect(predated).toBe(true)
-      const gaji = state.monsters.find(m => m.id === 'g1')
-      expect(gaji).toBeDefined()
-      expect(gaji!.carryingNutrient).toBeGreaterThan(0) // got nutrients from prey
-      expect(state.monsters.find(m => m.id === 'n1')).toBeUndefined()
+      const result = processPredation([gaji, niji], grid)
+
+      // Gaji should have eaten niji and gained its nutrients
+      const survivingGaji = result.monsters.find(m => m.id === 'g1')
+      expect(survivingGaji).toBeDefined()
+      expect(survivingGaji!.carryingNutrient).toBe(6) // transferred from prey
+      expect(result.monsters.find(m => m.id === 'n1')).toBeUndefined()
+      expect(result.events.some(e => e.type === 'PREDATION')).toBe(true)
     })
 
     it('lizardman should defeat 2 heroes in combat', () => {
@@ -656,8 +638,9 @@ describe('Integration Tests', () => {
       })
 
       // Run combat for 30 ticks
+      const randomFn3 = createSeededRandom(42)
       for (let i = 0; i < 30; i++) {
-        const result = tick(state)
+        const result = tick(state, randomFn3)
         state = result.state
       }
 

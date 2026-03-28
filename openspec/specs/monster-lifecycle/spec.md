@@ -26,10 +26,10 @@ Each monster SHALL have a phase field representing its current lifecycle stage. 
 - **THEN** it SHALL be in its initial phase: Nijirigoke='mobile', Gajigajimushi='larva', Lizardman='normal'
 
 ### Requirement: Nijirigoke lifecycle - bud transition
-A Nijirigoke SHALL transition from 'mobile' to 'bud' when it has accumulated sufficient nutrients and its life is low.
+A Nijirigoke SHALL transition from 'mobile' to 'bud' when it has accumulated sufficient nutrients (nutrient-only trigger, no life condition).
 
 #### Scenario: Bud transition condition
-- **WHEN** a Nijirigoke has carryingNutrient >= BUD_NUTRIENT_THRESHOLD AND life <= BUD_LIFE_THRESHOLD
+- **WHEN** a Nijirigoke has carryingNutrient >= BUD_NUTRIENT_THRESHOLD (4)
 - **THEN** it SHALL transition to 'bud' phase
 
 #### Scenario: Bud immobility
@@ -59,7 +59,7 @@ A Nijirigoke bud SHALL transition to 'flower' when it accumulates enough nutrien
 
 #### Scenario: Flower life decay
 - **WHEN** a Nijirigoke is in 'flower' phase
-- **THEN** its life SHALL decrease each tick (faster than normal movement cost)
+- **THEN** its life SHALL decrease by MOVEMENT_LIFE_COST (1) each tick (same rate as normal movement)
 
 ### Requirement: Nijirigoke lifecycle - withered transition
 A flower Nijirigoke SHALL transition to 'withered' when its life reaches 0.
