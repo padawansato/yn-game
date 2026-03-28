@@ -134,11 +134,6 @@ A Lizardman with a nest SHALL transition to 'laying' when nutrition conditions a
 - **WHEN** a Lizardman enters 'laying' phase
 - **THEN** it SHALL remain in laying for LAYING_DURATION ticks before producing an egg
 
-#### Scenario: Laying pickaxe immunity (FUTURE)
-- **WHEN** a Lizardman in 'laying' phase is hit by the pickaxe
-- **THEN** the pickaxe attack SHALL be ignored (no damage)
-- **NOTE**: Not yet implemented. Planned for a future change.
-
 ### Requirement: Lizardman lifecycle - egg phase
 After laying, an egg entity SHALL appear within the nest area.
 
