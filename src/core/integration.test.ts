@@ -516,6 +516,308 @@ describe('Integration Tests', () => {
       expect(getTotalNutrients(state)).toBe(initialNutrients)
     })
 
+    it('nijirigoke should not bud before minMobileTicks after dig', () => {
+      const grid = createGrid(10, 10, 'soil')
+      for (let x = 2; x <= 7; x++) grid[5][x] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }
+      for (let x = 2; x <= 7; x++) {
+        if (grid[4][x].type === 'soil') grid[4][x].nutrientAmount = 5
+        grid[6][x].nutrientAmount = 5
+      }
+      grid[4][3] = { type: 'soil', nutrientAmount: 9, magicAmount: 0 }
+
+      let state = createGameState({ grid, monsters: [] })
+      const randomFn = createSeededRandom(42)
+
+      const digResult = dig(state, { x: 3, y: 4 }, randomFn)
+      if ('error' in digResult) throw new Error('Dig failed')
+      state = digResult.state
+
+      const minMobileTicks = state.config.monsters.nijirigoke.minMobileTicks!
+
+      // Run ticks and verify no bud before minMobileTicks
+      for (let i = 0; i < minMobileTicks + 5; i++) {
+        const m = state.monsters.find(m => m.type === 'nijirigoke')
+        if (m && i < minMobileTicks) {
+          expect(m.phase).toBe('mobile')
+        }
+        state = tick(state, randomFn).state
+      }
+
+      // After minMobileTicks, bud should have been reached
+      const nijiAfter = state.monsters.find(m => m.type === 'nijirigoke')
+      expect(nijiAfter?.phase === 'bud' || nijiAfter?.phase === 'flower').toBe(true)
+    })
+
+    /* removed: experiment tests */
+    it.skip('placeholder', () => {
+      // Common setup: dig soil → nijirigoke near nutrient-rich soil
+      function runExperiment(label: string, budThreshold: number, flowerThreshold: number) {
+        const grid = createGrid(10, 10, 'soil')
+        for (let x = 2; x <= 7; x++) grid[5][x] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }
+        for (let x = 2; x <= 7; x++) {
+          if (grid[4][x].type === 'soil') grid[4][x].nutrientAmount = 5
+          grid[6][x].nutrientAmount = 5
+        }
+        // Dig target: nutrient=9 → nijirigoke spawn
+        grid[4][3] = { type: 'soil', nutrientAmount: 9, magicAmount: 0 }
+
+        const customConfig = createDefaultConfig()
+        customConfig.monsters.nijirigoke.budNutrientThreshold = budThreshold
+        customConfig.monsters.nijirigoke.flowerNutrientThreshold = flowerThreshold
+
+        let state = createGameState({ grid, monsters: [], config: customConfig })
+        const randomFn = createSeededRandom(42)
+
+        const digResult = dig(state, { x: 3, y: 4 }, randomFn)
+        if ('error' in digResult) return
+        state = digResult.state
+
+        const spawned = state.monsters[0]
+        let budTick = -1
+        let flowerTick = -1
+
+        for (let i = 0; i < 60; i++) {
+          const m = state.monsters.find(m => m.id === spawned.id)
+          if (m) {
+            if (m.phase === 'bud' && budTick === -1) budTick = i
+            if (m.phase === 'flower' && flowerTick === -1) flowerTick = i
+          }
+          if (flowerTick !== -1) break
+          state = tick(state, randomFn).state
+        }
+        console.log(`${label}: spawn life=${spawned.life}/${spawned.maxLife} | bud@tick=${budTick} flower@tick=${flowerTick}`)
+      }
+
+      console.log('\n=== EXPERIMENT: Threshold comparison (dig nutrient=9 soil) ===')
+      runExperiment('A: current  (bud>=4, flower>=8)', 4, 8)
+      runExperiment('B: bud>=6   (flower>=8)',         6, 8)
+      runExperiment('C: bud>=8   (flower>=10)',        8, 10)
+      runExperiment('D: bud>=6   (flower>=10)',        6, 10)
+
+      // Same but with life=maxLife (corridor spawn, no dig)
+      function runCorridorExperiment(label: string, budThreshold: number, flowerThreshold: number) {
+        const grid = createGrid(10, 10, 'soil')
+        for (let x = 2; x <= 7; x++) grid[5][x] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }
+        for (let x = 2; x <= 7; x++) {
+          if (grid[4][x].type === 'soil') grid[4][x].nutrientAmount = 5
+          grid[6][x].nutrientAmount = 5
+        }
+
+        const customConfig = createDefaultConfig()
+        customConfig.monsters.nijirigoke.budNutrientThreshold = budThreshold
+        customConfig.monsters.nijirigoke.flowerNutrientThreshold = flowerThreshold
+        const mConfig = customConfig.monsters.nijirigoke
+
+        const monster: Monster = {
+          id: 'm1', type: 'nijirigoke', position: { x: 2, y: 5 }, direction: 'right',
+          pattern: mConfig.pattern, phase: 'mobile', phaseTickCounter: 0,
+          life: mConfig.life, maxLife: mConfig.life, attack: mConfig.attack,
+          predationTargets: [...mConfig.predationTargets], carryingNutrient: 0,
+          nestPosition: null, nestOrientation: null,
+        }
+
+        let state = createGameState({ grid, monsters: [monster], config: customConfig })
+        const randomFn = createSeededRandom(42)
+        let budTick = -1
+        let flowerTick = -1
+
+        for (let i = 0; i < 60; i++) {
+          const m = state.monsters.find(m => m.id === 'm1')
+          if (m) {
+            if (m.phase === 'bud' && budTick === -1) budTick = i
+            if (m.phase === 'flower' && flowerTick === -1) flowerTick = i
+          }
+          if (flowerTick !== -1) break
+          state = tick(state, randomFn).state
+        }
+        console.log(`${label}: life=maxLife start | bud@tick=${budTick} flower@tick=${flowerTick}`)
+      }
+
+      console.log('\n=== EXPERIMENT: Corridor spawn (life=maxLife, nutrient=0) ===')
+      runCorridorExperiment('A: current  (bud>=4, flower>=8)', 4, 8)
+      runCorridorExperiment('B: bud>=6   (flower>=8)',         6, 8)
+      runCorridorExperiment('C: bud>=8   (flower>=10)',        8, 10)
+      runCorridorExperiment('D: bud>=6   (flower>=10)',        6, 10)
+
+      // === phaseTickCounter experiment ===
+      // Simulate minimum mobile phase duration by patching processPhaseTransitions
+      // We can't easily patch, so we manually simulate: skip bud check if phaseTickCounter < N
+      function runDigWithMinTick(label: string, minMobileTicks: number, budThreshold: number) {
+        const grid = createGrid(10, 10, 'soil')
+        for (let x = 2; x <= 7; x++) grid[5][x] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }
+        for (let x = 2; x <= 7; x++) {
+          if (grid[4][x].type === 'soil') grid[4][x].nutrientAmount = 5
+          grid[6][x].nutrientAmount = 5
+        }
+        grid[4][3] = { type: 'soil', nutrientAmount: 9, magicAmount: 0 }
+
+        const customConfig = createDefaultConfig()
+        customConfig.monsters.nijirigoke.budNutrientThreshold = budThreshold
+
+        let state = createGameState({ grid, monsters: [], config: customConfig })
+        const randomFn = createSeededRandom(42)
+
+        const digResult = dig(state, { x: 3, y: 4 }, randomFn)
+        if ('error' in digResult) return
+        state = digResult.state
+        const spawned = state.monsters[0]
+
+        // Manually track: pretend bud won't trigger until phaseTickCounter >= minMobileTicks
+        let budTick = -1
+        let flowerTick = -1
+        const trace: string[] = []
+
+        for (let i = 0; i < 60; i++) {
+          const m = state.monsters.find(m => m.id === spawned.id)
+          if (m) {
+            trace.push(`tick=${i} phase=${m.phase} life=${m.life}/${m.maxLife} nut=${m.carryingNutrient} ptc=${m.phaseTickCounter}`)
+            if (m.phase === 'bud' && budTick === -1) budTick = i
+            if (m.phase === 'flower' && flowerTick === -1) flowerTick = i
+          }
+          if (flowerTick !== -1 || !m) break
+
+          // Before tick: if monster would transition to bud but phaseTickCounter < minMobileTicks,
+          // prevent it by temporarily raising threshold
+          const curM = state.monsters.find(m => m.id === spawned.id)
+          if (curM && curM.phase === 'mobile' && curM.phaseTickCounter < minMobileTicks) {
+            state = {
+              ...state,
+              config: {
+                ...state.config,
+                monsters: {
+                  ...state.config.monsters,
+                  nijirigoke: { ...state.config.monsters.nijirigoke, budNutrientThreshold: 9999 }
+                }
+              }
+            }
+          } else {
+            state = {
+              ...state,
+              config: {
+                ...state.config,
+                monsters: {
+                  ...state.config.monsters,
+                  nijirigoke: { ...state.config.monsters.nijirigoke, budNutrientThreshold: budThreshold }
+                }
+              }
+            }
+          }
+
+          const result = tick(state, randomFn)
+          state = result.state
+          // Restore config for next iteration
+          state = {
+            ...state,
+            config: {
+              ...state.config,
+              monsters: {
+                ...state.config.monsters,
+                nijirigoke: { ...state.config.monsters.nijirigoke, budNutrientThreshold: budThreshold }
+              }
+            }
+          }
+        }
+        console.log(`${label}: bud@tick=${budTick} flower@tick=${flowerTick}`)
+        if (minMobileTicks === 5 && budThreshold === 4) console.log(trace.join('\n'))
+      }
+
+      // phaseTickCounter now implemented in code with config.minMobileTicks
+      function runDigWithConfig(label: string, minMobileTicks: number, budThreshold: number) {
+        const grid = createGrid(10, 10, 'soil')
+        for (let x = 2; x <= 7; x++) grid[5][x] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }
+        for (let x = 2; x <= 7; x++) {
+          if (grid[4][x].type === 'soil') grid[4][x].nutrientAmount = 5
+          grid[6][x].nutrientAmount = 5
+        }
+        grid[4][3] = { type: 'soil', nutrientAmount: 9, magicAmount: 0 }
+
+        const customConfig = createDefaultConfig()
+        customConfig.monsters.nijirigoke.budNutrientThreshold = budThreshold
+        customConfig.monsters.nijirigoke.minMobileTicks = minMobileTicks
+
+        let state = createGameState({ grid, monsters: [], config: customConfig })
+        const randomFn = createSeededRandom(42)
+        const digResult = dig(state, { x: 3, y: 4 }, randomFn)
+        if ('error' in digResult) return
+        state = digResult.state
+        const spawned = state.monsters[0]
+
+        let budTick = -1
+        let flowerTick = -1
+        const trace: string[] = []
+
+        for (let i = 0; i < 60; i++) {
+          const m = state.monsters.find(m => m.id === spawned.id)
+          if (m) {
+            trace.push(`t=${i} ${m.phase} life=${m.life} nut=${m.carryingNutrient} ptc=${m.phaseTickCounter}`)
+            if (m.phase === 'bud' && budTick === -1) budTick = i
+            if (m.phase === 'flower' && flowerTick === -1) flowerTick = i
+          }
+          if (flowerTick !== -1 || !m) break
+          state = tick(state, randomFn).state
+        }
+        console.log(`${label}: bud@${budTick} flower@${flowerTick}`)
+        if (minMobileTicks === 5 && budThreshold === 4) console.log(trace.join('\n'))
+      }
+
+      console.log('\n=== EXPERIMENT: minMobileTicks (real implementation, dig nutrient=9) ===')
+      runDigWithConfig('E: min=0  bud>=4', 0, 4)
+      runDigWithConfig('F: min=3  bud>=4', 3, 4)
+      runDigWithConfig('G: min=5  bud>=4', 5, 4)
+      runDigWithConfig('H: min=8  bud>=4', 8, 4)
+      runDigWithConfig('I: min=5  bud>=6', 5, 6)
+      runDigWithConfig('J: min=8  bud>=6', 8, 6)
+
+      expect(true).toBe(true)
+    })
+
+    it.skip('nijirigoke bud transition timing: dig high-nutrient soil', () => {
+      // Scenario: dig soil with 30 nutrients → nijirigoke spawns with carried nutrients
+      const grid = createGrid(10, 10, 'soil')
+      // Empty area for movement
+      for (let x = 2; x <= 7; x++) grid[5][x] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }
+      // More soil with nutrients nearby
+      for (let x = 2; x <= 7; x++) {
+        if (grid[4][x].type === 'soil') grid[4][x].nutrientAmount = 5
+        grid[6][x].nutrientAmount = 5
+      }
+      // Nutrient-9 soil to dig → nijirigoke spawn (threshold < 10)
+      // life = min(9, 24) = 9, carried = 0, remaining = 0
+      grid[4][3] = { type: 'soil', nutrientAmount: 9, magicAmount: 0 }
+
+      let state = createGameState({ grid, monsters: [] })
+      const randomFn = createSeededRandom(42)
+
+      // Dig the high-nutrient soil
+      const digResult = dig(state, { x: 3, y: 4 }, randomFn)
+      if ('error' in digResult) {
+        throw new Error(`Dig failed: ${digResult.error}`)
+      }
+      state = digResult.state
+
+      // Check spawned monster
+      const spawned = state.monsters[0]
+      console.log(`\n=== After Dig (soil nutrient=9) ===`)
+      console.log(`Spawned: life=${spawned.life}/${spawned.maxLife} nutrient=${spawned.carryingNutrient} phase=${spawned.phase}`)
+
+      const trace: string[] = []
+      let budTick = -1
+
+      for (let i = 0; i < 30; i++) {
+        const m = state.monsters.find(m => m.type === 'nijirigoke' && m.id === spawned.id)
+        if (m) {
+          trace.push(`tick=${i} phase=${m.phase} life=${m.life}/${m.maxLife} nutrient=${m.carryingNutrient}`)
+          if (m.phase === 'bud' && budTick === -1) budTick = i
+        }
+        if (m?.phase === 'flower') break
+        const result = tick(state, randomFn)
+        state = result.state
+      }
+      console.log(trace.join('\n'))
+      console.log(`Bud at tick: ${budTick}`)
+      expect(trace.length).toBeGreaterThan(0)
+    })
+
     it('gajigajimushi should gain nutrients from predation (nutrient transfer)', () => {
       const grid = createGrid(5, 5, 'empty')
 

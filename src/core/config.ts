@@ -43,6 +43,7 @@ export interface MonsterTypeConfig {
   // Nijirigoke lifecycle
   budNutrientThreshold?: number
   budLifeThreshold?: number
+  minMobileTicks?: number
   flowerNutrientThreshold?: number
   moyomoyoDamage?: number
   // Gajigajimushi lifecycle
@@ -111,6 +112,7 @@ export function createDefaultConfig(): GameConfig {
         canCarryNutrients: MONSTER_CONFIGS.nijirigoke.canCarryNutrients,
         budNutrientThreshold: BUD_NUTRIENT_THRESHOLD,
         budLifeThreshold: BUD_LIFE_THRESHOLD,
+        minMobileTicks: 8,
         flowerNutrientThreshold: FLOWER_NUTRIENT_THRESHOLD,
         moyomoyoDamage: MOYOMOYO_DAMAGE,
       },

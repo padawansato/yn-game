@@ -1019,6 +1019,8 @@ describe('Simulation', () => {
           phase: 'mobile',
           carryingNutrient: BUD_NUTRIENT_THRESHOLD,
           life: BUD_LIFE_THRESHOLD,
+          maxLife: 24,
+          phaseTickCounter: 8, // >= minMobileTicks
         })
         const state = createGameState({ grid, monsters: [monster] })
 
@@ -1026,6 +1028,23 @@ describe('Simulation', () => {
 
         expect(result.monsters[0].phase).toBe('bud')
         expect(result.events.some((e) => e.type === 'PHASE_TRANSITION')).toBe(true)
+      })
+
+      it('should NOT transition mobile → bud before minMobileTicks', () => {
+        const grid = createGrid(5, 5, 'empty')
+        const monster = createMonster({
+          id: 'm1',
+          type: 'nijirigoke',
+          phase: 'mobile',
+          carryingNutrient: BUD_NUTRIENT_THRESHOLD,
+          phaseTickCounter: 0, // below minMobileTicks (default: 8)
+        })
+        const state = createGameState({ grid, monsters: [monster] })
+
+        const result = processPhaseTransitions(state)
+
+        expect(result.monsters[0].phase).toBe('mobile')
+        expect(result.monsters[0].phaseTickCounter).toBe(1) // incremented
       })
 
       it('should transition bud → flower when nutrients sufficient', () => {

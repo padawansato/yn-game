@@ -178,18 +178,27 @@ function processNijirigokePhase(
   const nijiConfig = config.monsters.nijirigoke
   const phase = monster.phase
 
-  // mobile → bud
-  if (
-    phase === 'mobile' &&
-    monster.carryingNutrient >= nijiConfig.budNutrientThreshold!
-  ) {
-    events.push({
-      type: 'PHASE_TRANSITION',
-      monsterId: monster.id,
-      oldPhase: 'mobile',
-      newPhase: 'bud',
-    })
-    return { monster: { ...monster, phase: 'bud', phaseTickCounter: 0 }, grid }
+  // mobile: increment phaseTickCounter each tick
+  if (phase === 'mobile') {
+    const minMobileTicks = nijiConfig.minMobileTicks ?? 0
+    const updatedCounter = monster.phaseTickCounter + 1
+
+    // mobile → bud (requires nutrients AND minimum time in mobile phase)
+    if (
+      monster.carryingNutrient >= nijiConfig.budNutrientThreshold! &&
+      updatedCounter >= minMobileTicks
+    ) {
+      events.push({
+        type: 'PHASE_TRANSITION',
+        monsterId: monster.id,
+        oldPhase: 'mobile',
+        newPhase: 'bud',
+      })
+      return { monster: { ...monster, phase: 'bud', phaseTickCounter: 0 }, grid }
+    }
+
+    // Stay mobile but increment counter
+    return { monster: { ...monster, phaseTickCounter: updatedCounter }, grid }
   }
 
   // bud → flower
