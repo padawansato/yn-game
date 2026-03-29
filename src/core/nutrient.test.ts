@@ -385,6 +385,7 @@ describe('Nutrient System', () => {
         nextMonsterId: 0,
         nextHeroId: 0,
         isGameOver: false,
+        config,
       }
 
       const total = getTotalNutrients(state)
@@ -410,6 +411,7 @@ describe('Nutrient System', () => {
         nextMonsterId: 0,
         nextHeroId: 0,
         isGameOver: false,
+        config,
       }
 
       expect(isWorldDying(state, 0.1)).toBe(true) // 5 < 100 * 0.1
@@ -432,6 +434,7 @@ describe('Nutrient System', () => {
         nextMonsterId: 0,
         nextHeroId: 0,
         isGameOver: false,
+        config,
       }
 
       expect(isWorldDying(state, 0.1)).toBe(false) // 50 >= 100 * 0.1

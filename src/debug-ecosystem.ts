@@ -8,6 +8,7 @@ import { tick } from './core/simulation'
 import { getTotalNutrients } from './core/nutrient'
 import { MONSTER_CONFIGS, BUD_NUTRIENT_THRESHOLD, BUD_LIFE_THRESHOLD } from './core/constants'
 import { createSeededRandom } from './core/random'
+import { createDefaultConfig } from './core/config'
 import type { HeroEntity } from './core/hero/types'
 
 // === グリッド作成 (20x15, 内部はsoil+養分あり) ===
@@ -102,6 +103,8 @@ function makeState(): GameState {
     })
   }
 
+  const config = createDefaultConfig()
+
   const totalNutrients = getTotalNutrients({
     grid,
     monsters,
@@ -115,6 +118,7 @@ function makeState(): GameState {
     heroSpawnConfig: { partySize: 1, spawnStartTick: 9999, spawnInterval: 10, heroesSpawned: 0 },
     nextHeroId: 0,
     isGameOver: false,
+    config,
   })
 
   return {
@@ -130,6 +134,7 @@ function makeState(): GameState {
     heroSpawnConfig: { partySize: 1, spawnStartTick: 9999, spawnInterval: 10, heroesSpawned: 0 },
     nextHeroId: 0,
     isGameOver: false,
+    config,
   }
 }
 

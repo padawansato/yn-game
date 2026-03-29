@@ -341,6 +341,7 @@ function makeState(grid: Cell[][], monsterSetups: MonsterSetup[]): GameState {
     gameTime: 0,
     nextMonsterId: 0,
     ...heroDefaults,
+    config: gameConfig,
   })
 
   return {
@@ -351,6 +352,7 @@ function makeState(grid: Cell[][], monsterSetups: MonsterSetup[]): GameState {
     gameTime: 0,
     nextMonsterId: monsterIdCounter,
     ...heroDefaults,
+    config: gameConfig,
   }
 }
 

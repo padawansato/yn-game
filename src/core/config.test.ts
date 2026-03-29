@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { createDefaultConfig, validateConfig, type GameConfig } from './config'
+import type { MonsterType } from './types'
 import {
   MONSTER_CONFIGS,
   NUTRIENT_CARRY_CAPACITY,
@@ -166,7 +167,7 @@ describe('GameConfig', () => {
 
     it('should detect unknown predation target references', () => {
       const config = createDefaultConfig()
-      config.monsters.nijirigoke.predationTargets = ['unknown_monster']
+      config.monsters.nijirigoke.predationTargets = ['unknown_monster' as MonsterType]
       const errors = validateConfig(config)
       expect(errors).toContainEqual({
         path: 'monsters.nijirigoke.predationTargets',
