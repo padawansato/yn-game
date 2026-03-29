@@ -1,3 +1,7 @@
+// Config
+export { createDefaultConfig, validateConfig } from './config'
+export type { GameConfig, MonsterTypeConfig, ConfigValidationError } from './config'
+
 // Types
 export type {
   Position,

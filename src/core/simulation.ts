@@ -38,6 +38,8 @@ import {
   getSurroundingCells,
 } from './nutrient'
 import { processHeroSpawns, calculateHeroMove } from './hero'
+import type { GameConfig } from './config'
+import { createDefaultConfig } from './config'
 import { processCombat } from './combat'
 
 const INITIAL_PHASE: Record<MonsterType, MonsterPhase> = {
@@ -1154,6 +1156,7 @@ export function createGameState(
   height: number,
   soilRatio: number = 0.7,
   options: CreateGameStateOptions = {},
+  config?: GameConfig,
 ): GameState {
   const grid: Cell[][] = []
 
@@ -1204,5 +1207,6 @@ export function createGameState(
     nextMonsterId: 0,
     nextHeroId: 0,
     isGameOver: false,
+    config: config ?? createDefaultConfig(),
   }
 }

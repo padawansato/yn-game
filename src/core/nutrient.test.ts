@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Cell, GameState, Monster } from './types'
+import { createDefaultConfig } from './config'
 import {
   initializeNutrients,
   getTotalNutrients,
@@ -382,6 +383,7 @@ describe('Nutrient System', () => {
         nextMonsterId: 0,
         nextHeroId: 0,
         isGameOver: false,
+        config: createDefaultConfig(),
       }
 
       const total = getTotalNutrients(state)
@@ -407,6 +409,7 @@ describe('Nutrient System', () => {
         nextMonsterId: 0,
         nextHeroId: 0,
         isGameOver: false,
+        config: createDefaultConfig(),
       }
 
       expect(isWorldDying(state, 0.1)).toBe(true) // 5 < 100 * 0.1
@@ -429,6 +432,7 @@ describe('Nutrient System', () => {
         nextMonsterId: 0,
         nextHeroId: 0,
         isGameOver: false,
+        config: createDefaultConfig(),
       }
 
       expect(isWorldDying(state, 0.1)).toBe(false) // 50 >= 100 * 0.1

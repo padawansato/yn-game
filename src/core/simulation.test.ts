@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Cell, GameEvent, GameState, Monster } from './types'
+import { createDefaultConfig } from './config'
 import {
   calculateAllMoves,
   resolveConflicts,
@@ -75,6 +76,7 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
     nextMonsterId: 0,
     nextHeroId: 0,
     isGameOver: false,
+    config: createDefaultConfig(),
     ...overrides,
   }
 }

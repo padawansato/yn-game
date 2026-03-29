@@ -9,6 +9,7 @@ import {
   getTotalNutrients,
   isWorldDying,
   MONSTER_CONFIGS,
+  createDefaultConfig,
 } from './index'
 import { createSeededRandom } from './random'
 import { processPredation } from './predation'
@@ -38,6 +39,7 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
     nextMonsterId: 0,
     nextHeroId: 0,
     isGameOver: false,
+    config: createDefaultConfig(),
     ...overrides,
   }
 }

@@ -8,6 +8,7 @@
 import type { Cell, GameState, Monster, GameEvent } from './core/types'
 import { tick, dig } from './core/simulation'
 import { initializeNutrients, getTotalNutrients } from './core/nutrient'
+import { createDefaultConfig } from './core/config'
 import {
   LAYING_NUTRIENT_THRESHOLD,
   LAYING_LIFE_THRESHOLD,
@@ -166,6 +167,7 @@ function scenarioLizardmanEggLaying() {
     nextMonsterId: 0,
     nextHeroId: 0,
     isGameOver: false,
+    config: createDefaultConfig(),
   }
   const state: GameState = {
     ...baseState,
