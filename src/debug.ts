@@ -8,14 +8,7 @@
 import type { Cell, GameState, Monster, GameEvent } from './core/types'
 import { tick, dig } from './core/simulation'
 import { initializeNutrients, getTotalNutrients } from './core/nutrient'
-import {
-  LAYING_NUTRIENT_THRESHOLD,
-  LAYING_LIFE_THRESHOLD,
-  LAYING_DURATION,
-  EGG_HATCH_DURATION,
-  MONSTER_CONFIGS,
-} from './core/constants'
-
+import { createDefaultConfig } from './core/config'
 import { createSeededRandom } from './core/random'
 
 // === グリッド作成ヘルパー ===
@@ -122,12 +115,14 @@ function printGrid(grid: Cell[][], monsters: Monster[]) {
 function scenarioLizardmanEggLaying() {
   console.log('=== シナリオ: リザードマン産卵テスト ===')
   console.log()
+  const config = createDefaultConfig()
+  const lizConfig = config.monsters.lizardman
   console.log('条件:')
-  console.log(`  LAYING_NUTRIENT_THRESHOLD = ${LAYING_NUTRIENT_THRESHOLD}`)
-  console.log(`  LAYING_LIFE_THRESHOLD = ${LAYING_LIFE_THRESHOLD}`)
-  console.log(`  LAYING_DURATION = ${LAYING_DURATION} ticks`)
-  console.log(`  EGG_HATCH_DURATION = ${EGG_HATCH_DURATION} ticks`)
-  console.log(`  Lizardman maxLife = ${MONSTER_CONFIGS.lizardman.life}`)
+  console.log(`  LAYING_NUTRIENT_THRESHOLD = ${lizConfig.layingNutrientThreshold}`)
+  console.log(`  LAYING_LIFE_THRESHOLD = ${lizConfig.layingLifeThreshold}`)
+  console.log(`  LAYING_DURATION = ${lizConfig.layingDuration} ticks`)
+  console.log(`  EGG_HATCH_DURATION = ${lizConfig.eggHatchDuration} ticks`)
+  console.log(`  Lizardman maxLife = ${lizConfig.life}`)
   console.log()
 
   const random = createSeededRandom(42)
@@ -150,7 +145,7 @@ function scenarioLizardmanEggLaying() {
   grid[4][5] = { type: 'soil', nutrientAmount: 100, magicAmount: 0 }
 
   // 養分を初期化（残りのsoilに養分を分配）
-  const { grid: initializedGrid } = initializeNutrients(grid, 200)
+  const { grid: initializedGrid } = initializeNutrients(grid, 200, config)
   // 手動で配置したsoilの養分を上書き（initializeで変わった可能性）
   initializedGrid[4][5] = { type: 'soil', nutrientAmount: 100, magicAmount: 0 }
 
@@ -160,12 +155,13 @@ function scenarioLizardmanEggLaying() {
     heroes: [],
     entrancePosition: { x: 5, y: 0 },
     demonLordPosition: null,
-    heroSpawnConfig: { partySize: 1, spawnStartTick: 100, spawnInterval: 10, heroesSpawned: 0 },
-    digPower: 100,
+    heroSpawnConfig: { partySize: 1, spawnStartTick: config.hero.spawnStartTick, spawnInterval: config.hero.spawnInterval, heroesSpawned: 0 },
+    digPower: config.dig.initialPower,
     gameTime: 0,
     nextMonsterId: 0,
     nextHeroId: 0,
     isGameOver: false,
+    config,
   }
   const state: GameState = {
     ...baseState,
@@ -207,8 +203,8 @@ function scenarioLizardmanEggLaying() {
     if (m.type === 'lizardman') {
       return {
         ...m,
-        carryingNutrient: LAYING_NUTRIENT_THRESHOLD + 5, // 閾値以上
-        life: LAYING_LIFE_THRESHOLD + 10, // 閾値以上
+        carryingNutrient: lizConfig.layingNutrientThreshold! + 5, // 閾値以上
+        life: lizConfig.layingLifeThreshold! + 10, // 閾値以上
         nestPosition: { x: 5, y: 4 }, // 巣を設定
         nestOrientation: 'horizontal' as const, // 巣の向き
         position: { x: 5, y: 4 }, // 巣位置にいる
@@ -225,7 +221,7 @@ function scenarioLizardmanEggLaying() {
   console.log()
 
   // Step 2: tickを回して産卵～孵化を観察
-  const maxTicks = LAYING_DURATION + EGG_HATCH_DURATION + 10
+  const maxTicks = lizConfig.layingDuration! + lizConfig.eggHatchDuration! + 10
   console.log(`=== ${maxTicks} ticks 実行開始 ===`)
   console.log()
 

@@ -1,7 +1,7 @@
 import type { Cell, Direction, Monster, Position } from '../types'
+import type { GameConfig } from '../config'
 import { getForwardPosition, getTurnDirections, isValidMove } from './straight'
 import { isHungry } from './hunger'
-import { LAYING_NUTRIENT_THRESHOLD, LAYING_LIFE_THRESHOLD, NEST_NUTRIENT_COST, NEST_LIFE_COST } from '../constants'
 
 /**
  * Check if position is adjacent to nest (including diagonal)
@@ -303,9 +303,10 @@ export function getDirectionToward(from: Position, to: Position): Direction {
 function findPreyDirection(
   monster: Monster,
   monsters: Monster[],
-  grid: Cell[][]
+  grid: Cell[][],
+  config: GameConfig
 ): Direction | null {
-  if (!isHungry(monster) || monster.predationTargets.length === 0) {
+  if (!isHungry(monster, config) || monster.predationTargets.length === 0) {
     return null
   }
 
@@ -353,6 +354,7 @@ export function calculateStationaryMove(
   monster: Monster,
   grid: Cell[][],
   monsters: Monster[] = [],
+  config: GameConfig,
   randomFn: () => number = Math.random
 ): {
   position: Position
@@ -364,8 +366,8 @@ export function calculateStationaryMove(
   if (monster.nestPosition === null) {
     const nestInfo = findNestArea(monster.position, grid)
     if (nestInfo &&
-        monster.carryingNutrient >= NEST_NUTRIENT_COST &&
-        monster.life > NEST_LIFE_COST) {
+        monster.carryingNutrient >= config.monsters.lizardman.nestNutrientCost! &&
+        monster.life > config.monsters.lizardman.nestLifeCost!) {
       // Establish nest, record center and orientation
       return {
         position: monster.position,
@@ -395,8 +397,8 @@ export function calculateStationaryMove(
   // Ready to lay eggs - return to nest center
   if (
     (monster.phase === 'normal' || monster.phase === 'nesting') &&
-    monster.carryingNutrient >= LAYING_NUTRIENT_THRESHOLD &&
-    monster.life >= LAYING_LIFE_THRESHOLD
+    monster.carryingNutrient >= config.monsters.lizardman.layingNutrientThreshold! &&
+    monster.life >= config.monsters.lizardman.layingLifeThreshold!
   ) {
     // Already at nest center - stay
     if (
@@ -440,7 +442,7 @@ export function calculateStationaryMove(
   }
 
   // When hungry, prioritize moving toward prey
-  const preyDirection = findPreyDirection(monster, monsters, grid)
+  const preyDirection = findPreyDirection(monster, monsters, grid, config)
   if (preyDirection) {
     // Filter patrol options that move toward prey
     const preyOptions = patrolOptions.filter((pos) => {

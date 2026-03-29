@@ -1,9 +1,9 @@
 import type { Monster } from '../types'
-import { HUNGER_THRESHOLD_RATIO } from '../constants'
+import type { GameConfig } from '../config'
 
 /**
  * Check if monster is hungry
  */
-export function isHungry(monster: Monster): boolean {
-  return monster.life < monster.maxLife * HUNGER_THRESHOLD_RATIO
+export function isHungry(monster: Monster, config: GameConfig): boolean {
+  return monster.life < monster.maxLife * config.nutrient.hungerThresholdRatio
 }

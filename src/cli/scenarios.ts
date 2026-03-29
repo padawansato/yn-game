@@ -7,6 +7,7 @@ import {
   PUPA_NUTRIENT_THRESHOLD,
 } from '../core/constants'
 import { getTotalNutrients } from '../core/nutrient'
+import { createDefaultConfig } from '../core/config'
 
 // ---------- Public interface ----------
 
@@ -99,6 +100,8 @@ function makeState(grid: Cell[][], monsterSetups: MonsterSetup[]): GameState {
     isGameOver: false,
   }
 
+  const config = createDefaultConfig()
+
   const totalNutrients = getTotalNutrients({
     grid,
     monsters,
@@ -107,6 +110,7 @@ function makeState(grid: Cell[][], monsterSetups: MonsterSetup[]): GameState {
     gameTime: 0,
     nextMonsterId: 0,
     ...heroDefaults,
+    config,
   })
 
   return {
@@ -117,6 +121,7 @@ function makeState(grid: Cell[][], monsterSetups: MonsterSetup[]): GameState {
     gameTime: 0,
     nextMonsterId: monsterIdCounter,
     ...heroDefaults,
+    config,
   }
 }
 

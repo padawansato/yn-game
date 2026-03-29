@@ -1,6 +1,6 @@
 import type { Cell, GameEvent, Monster, Position, Direction } from './types'
 import type { HeroEntity } from './hero/types'
-import { HERO_NUTRIENT_DROP } from './constants'
+import type { GameConfig } from './config'
 import { releaseNutrientsOnDeath, getSurroundingCells } from './nutrient'
 
 function getFrontCell(position: Position, direction: Direction): Position {
@@ -20,12 +20,13 @@ function isInBounds(pos: Position, grid: Cell[][]): boolean {
   return pos.y >= 0 && pos.y < grid.length && pos.x >= 0 && pos.x < grid[0].length
 }
 
-function releaseHeroNutrients(position: Position, grid: Cell[][]): Cell[][] {
+function releaseHeroNutrients(position: Position, grid: Cell[][], config: GameConfig): Cell[][] {
   const cells = getSurroundingCells(position, grid)
   if (cells.length === 0) return grid
 
-  const perCell = Math.floor(HERO_NUTRIENT_DROP / cells.length)
-  let remainder = HERO_NUTRIENT_DROP % cells.length
+  const nutrientDrop = config.hero.nutrientDrop
+  const perCell = Math.floor(nutrientDrop / cells.length)
+  let remainder = nutrientDrop % cells.length
 
   return grid.map((row, y) =>
     row.map((cell, x) => {
@@ -43,7 +44,8 @@ function releaseHeroNutrients(position: Position, grid: Cell[][]): Cell[][] {
 export function processCombat(
   heroes: HeroEntity[],
   monsters: Monster[],
-  grid: Cell[][]
+  grid: Cell[][],
+  config: GameConfig
 ): {
   heroes: HeroEntity[]
   monsters: Monster[]
@@ -146,7 +148,7 @@ export function processCombat(
   for (const hero of updatedHeroes) {
     if (hero.life <= 0 && hero.state === 'dead') {
       events.push({ type: 'HERO_DIED', heroId: hero.id, position: hero.position })
-      updatedGrid = releaseHeroNutrients(hero.position, updatedGrid)
+      updatedGrid = releaseHeroNutrients(hero.position, updatedGrid, config)
     }
   }
 

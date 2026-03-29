@@ -1,10 +1,5 @@
 import type { GameState, GameEvent, Direction } from '../types'
 import type { HeroEntity, HeroSpawnConfig } from './types'
-import {
-  HERO_LIFE,
-  HERO_ATTACK,
-  HERO_ANNOUNCE_TICKS,
-} from '../constants'
 
 const DIRECTIONS: Direction[] = ['up', 'down', 'left', 'right']
 
@@ -27,8 +22,9 @@ export function processHeroSpawns(
     return { heroes, events, heroSpawnConfig: { ...heroSpawnConfig }, nextHeroId }
   }
 
+  const { config } = state
   // Party announcement
-  const announceTick = spawnStartTick - HERO_ANNOUNCE_TICKS
+  const announceTick = spawnStartTick - config.hero.announceTicks
   if (gameTime === announceTick && heroesSpawned === 0) {
     events.push({
       type: 'HERO_PARTY_ANNOUNCED',
@@ -71,9 +67,9 @@ export function processHeroSpawns(
     id: `hero-${newHeroId}`,
     position: { ...entrancePosition },
     direction: DIRECTIONS[Math.floor(randomFn() * 4) % 4],
-    life: HERO_LIFE,
-    maxLife: HERO_LIFE,
-    attack: HERO_ATTACK,
+    life: config.hero.life,
+    maxLife: config.hero.life,
+    attack: config.hero.attack,
     attackPattern: 'slash',
     visitedCells: new Set([`${entrancePosition.x},${entrancePosition.y}`]),
     pathHistory: [{ ...entrancePosition }],

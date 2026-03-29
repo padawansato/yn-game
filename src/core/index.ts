@@ -15,35 +15,9 @@ export type {
   GameEvent,
 } from './types'
 
-// Constants
-export {
-  MONSTER_CONFIGS,
-  NUTRIENT_CARRY_CAPACITY,
-  NUTRIENT_RELEASE_THRESHOLD,
-  HUNGER_THRESHOLD_RATIO,
-  MOVEMENT_LIFE_COST,
-  DEFAULT_GRID_WIDTH,
-  DEFAULT_GRID_HEIGHT,
-  MAX_NUTRIENT_PER_CELL,
-  PICKAXE_DAMAGE,
-  BUD_NUTRIENT_THRESHOLD,
-  BUD_LIFE_THRESHOLD,
-  FLOWER_NUTRIENT_THRESHOLD,
-  PUPA_NUTRIENT_THRESHOLD,
-  PUPA_DURATION,
-  LAYING_NUTRIENT_THRESHOLD,
-  LAYING_LIFE_THRESHOLD,
-  LAYING_DURATION,
-  EGG_HATCH_DURATION,
-  NEST_NUTRIENT_COST,
-  NEST_LIFE_COST,
-  GAJI_REPRO_LIFE_THRESHOLD,
-  GAJI_REPRO_LIFE_COST,
-  MOYOMOYO_DAMAGE,
-  HERO_SPAWN_START_TICK,
-  HERO_ANNOUNCE_TICKS,
-} from './constants'
-export type { MonsterConfig } from './constants'
+// Config
+export { createDefaultConfig, validateConfig } from './config'
+export type { GameConfig, MonsterTypeConfig, ConfigValidationError } from './config'
 
 // Nutrient system
 export {

@@ -15,6 +15,7 @@ import {
   processPhaseTransitions,
   applyMoyomoyoAttacks,
 } from './simulation'
+import { createDefaultConfig } from './config'
 import {
   INITIAL_DIG_POWER,
   PICKAXE_DAMAGE,
@@ -29,6 +30,8 @@ import {
   MOYOMOYO_DAMAGE,
 } from './constants'
 import { getTotalNutrients } from './nutrient'
+
+const config = createDefaultConfig()
 
 function createGrid(width: number, height: number, type: Cell['type'] = 'empty'): Cell[][] {
   return Array.from({ length: height }, () =>
@@ -75,6 +78,7 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
     nextMonsterId: 0,
     nextHeroId: 0,
     isGameOver: false,
+    config,
     ...overrides,
   }
 }
@@ -308,7 +312,7 @@ describe('Simulation', () => {
       const original = new Map([['m1', { x: 2, y: 2 }]])
       const grid = createGrid(10, 10)
 
-      const result = decreaseLifeForMoved([monster], original, grid)
+      const result = decreaseLifeForMoved([monster], original, grid, config)
 
       expect(result.monsters[0].life).toBe(10)
       expect(result.monsters[0].carryingNutrient).toBe(4)
@@ -325,7 +329,7 @@ describe('Simulation', () => {
       const original = new Map([['m1', { x: 2, y: 2 }]])
       const grid = createGrid(10, 10)
 
-      const result = decreaseLifeForMoved([monster], original, grid)
+      const result = decreaseLifeForMoved([monster], original, grid, config)
       expect(result.monsters[0].life).toBe(9)
       expect(result.monsters[0].carryingNutrient).toBe(0)
     })
@@ -341,7 +345,7 @@ describe('Simulation', () => {
       const original = new Map([['m1', { x: 2, y: 2 }]])
       const grid = createGrid(10, 10)
 
-      const result = decreaseLifeForMoved([monster], original, grid)
+      const result = decreaseLifeForMoved([monster], original, grid, config)
       expect(result.monsters[0].life).toBe(9)
       expect(result.monsters[0].carryingNutrient).toBe(0)
     })
@@ -351,7 +355,7 @@ describe('Simulation', () => {
       const original = new Map([['m1', { x: 2, y: 2 }]])
       const grid = createGrid(10, 10)
 
-      const result = decreaseLifeForMoved([monster], original, grid)
+      const result = decreaseLifeForMoved([monster], original, grid, config)
 
       expect(result.monsters[0].life).toBe(10)
     })
@@ -361,7 +365,7 @@ describe('Simulation', () => {
       const original = new Map([['m1', { x: 2, y: 2 }]])
       const grid = createGrid(10, 10)
 
-      const result = decreaseLifeForMoved([monster], original, grid)
+      const result = decreaseLifeForMoved([monster], original, grid, config)
 
       expect(result.monsters).toHaveLength(0)
       expect(result.events).toContainEqual(
@@ -382,7 +386,7 @@ describe('Simulation', () => {
       })
       const original = new Map([['m1', { x: 2, y: 2 }]])
 
-      const result = decreaseLifeForMoved([monster], original, grid)
+      const result = decreaseLifeForMoved([monster], original, grid, config)
 
       expect(result.monsters).toHaveLength(0)
       // Nutrients distributed to surrounding 9 cells (conservation law)
@@ -515,7 +519,7 @@ describe('Simulation', () => {
         carryingNutrient: 0,
       })
 
-      const result = processNutrientInteractions([monster], grid)
+      const result = processNutrientInteractions([monster], grid, config)
 
       expect(result.monsters[0].carryingNutrient).toBe(5)
       expect(result.grid[2][3].nutrientAmount).toBe(0)
@@ -535,7 +539,7 @@ describe('Simulation', () => {
         carryingNutrient: 9, // >= NUTRIENT_RELEASE_THRESHOLD(8)
       })
 
-      const result = processNutrientInteractions([monster], grid)
+      const result = processNutrientInteractions([monster], grid, config)
 
       expect(result.monsters[0].carryingNutrient).toBe(1) // keeps 1
       expect(result.events).toHaveLength(1)
@@ -555,7 +559,7 @@ describe('Simulation', () => {
         carryingNutrient: 0,
       })
 
-      const result = processNutrientInteractions([monster], grid)
+      const result = processNutrientInteractions([monster], grid, config)
 
       expect(result.monsters[0].carryingNutrient).toBe(0)
       expect(result.grid[2][3].nutrientAmount).toBe(5)
@@ -574,7 +578,7 @@ describe('Simulation', () => {
         carryingNutrient: 5, // above release threshold
       })
 
-      const result = processNutrientInteractions([monster], grid)
+      const result = processNutrientInteractions([monster], grid, config)
 
       // Should absorb (not release), since absorption happens first
       expect(result.monsters[0].carryingNutrient).toBe(8) // 5 + 3
@@ -1297,7 +1301,7 @@ describe('Simulation', () => {
       const originalNestPositions = new Map<string, { x: number; y: number } | null>()
       originalNestPositions.set('liz-1', null)
 
-      const result = processNestEstablishment([monster], originalNestPositions)
+      const result = processNestEstablishment([monster], originalNestPositions, config)
 
       expect(result.monsters[0].carryingNutrient).toBe(20 - NEST_NUTRIENT_COST)
       expect(result.monsters[0].life).toBe(60 - NEST_LIFE_COST)
@@ -1317,7 +1321,7 @@ describe('Simulation', () => {
       const originalNestPositions = new Map<string, { x: number; y: number } | null>()
       originalNestPositions.set('liz-2', { x: 3, y: 3 })
 
-      const result = processNestEstablishment([monster], originalNestPositions)
+      const result = processNestEstablishment([monster], originalNestPositions, config)
 
       expect(result.monsters[0].carryingNutrient).toBe(20)
       expect(result.monsters[0].life).toBe(60)
@@ -1336,7 +1340,7 @@ describe('Simulation', () => {
       const originalNestPositions = new Map<string, { x: number; y: number } | null>()
       originalNestPositions.set('liz-3', null)
 
-      const result = processNestEstablishment([monster], originalNestPositions)
+      const result = processNestEstablishment([monster], originalNestPositions, config)
 
       expect(result.monsters[0].carryingNutrient).toBe(20)
       expect(result.monsters[0].life).toBe(60)
@@ -1366,7 +1370,7 @@ describe('Simulation', () => {
       })
 
       const events: GameEvent[] = []
-      const result = applyMoyomoyoAttacks([flower, gaji], grid, events)
+      const result = applyMoyomoyoAttacks([flower, gaji], grid, events, config)
 
       const updatedGaji = result.monsters.find((m) => m.id === 'gaji-1')
       expect(updatedGaji).toBeDefined()
@@ -1405,7 +1409,7 @@ describe('Simulation', () => {
       })
 
       const events: GameEvent[] = []
-      const result = applyMoyomoyoAttacks([flower, gaji], grid, events)
+      const result = applyMoyomoyoAttacks([flower, gaji], grid, events, config)
 
       // Gaji should be removed
       const updatedGaji = result.monsters.find((m) => m.id === 'gaji-1')
@@ -1443,7 +1447,7 @@ describe('Simulation', () => {
       })
 
       const events: GameEvent[] = []
-      const result = applyMoyomoyoAttacks([flower, farGaji], grid, events)
+      const result = applyMoyomoyoAttacks([flower, farGaji], grid, events, config)
 
       const updatedGaji = result.monsters.find((m) => m.id === 'gaji-far')
       expect(updatedGaji).toBeDefined()
@@ -1483,7 +1487,7 @@ describe('Simulation', () => {
       })
 
       const events: GameEvent[] = []
-      const result = applyMoyomoyoAttacks([flower, lizard, otherKoke], grid, events)
+      const result = applyMoyomoyoAttacks([flower, lizard, otherKoke], grid, events, config)
 
       expect(result.monsters.find((m) => m.id === 'liz-1')!.life).toBe(120)
       expect(result.monsters.find((m) => m.id === 'koke-2')!.life).toBe(10)

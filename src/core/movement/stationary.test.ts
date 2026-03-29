@@ -11,6 +11,7 @@ import {
   calculateStationaryMove,
 } from './stationary'
 import { NEST_NUTRIENT_COST, NEST_LIFE_COST } from '../constants'
+import { createDefaultConfig } from '../config'
 
 function createGrid(width: number, height: number, type: Cell['type'] = 'empty'): Cell[][] {
   return Array.from({ length: height }, () =>
@@ -39,6 +40,7 @@ function createMonster(overrides: Partial<Monster> = {}): Monster {
 }
 
 describe('Stationary Movement', () => {
+  const config = createDefaultConfig()
   describe('isAdjacentToNest', () => {
     it('should return true for adjacent positions', () => {
       const nest = { x: 2, y: 2 }
@@ -231,7 +233,7 @@ describe('Stationary Movement', () => {
       const grid = createGrid(8, 8, 'empty')
       const monster = createMonster({ position: { x: 3, y: 3 }, nestPosition: null, carryingNutrient: NEST_NUTRIENT_COST, life: NEST_LIFE_COST + 1 })
 
-      const result = calculateStationaryMove(monster, grid, [], () => 0)
+      const result = calculateStationaryMove(monster, grid, [], config, () => 0)
 
       // findNestArea returns center of first matching 2x3 pattern
       expect(result.nestPosition).not.toBeNull()
@@ -248,7 +250,7 @@ describe('Stationary Movement', () => {
         life: 80,
       })
 
-      const result = calculateStationaryMove(monster, grid, [], () => 0)
+      const result = calculateStationaryMove(monster, grid, [], config, () => 0)
 
       // Should fall back to straight movement, not establish nest
       expect(result.nestPosition).toBeNull()
@@ -263,7 +265,7 @@ describe('Stationary Movement', () => {
         life: NEST_LIFE_COST,
       })
 
-      const result = calculateStationaryMove(monster, grid, [], () => 0)
+      const result = calculateStationaryMove(monster, grid, [], config, () => 0)
 
       // Should fall back to straight movement, not establish nest
       expect(result.nestPosition).toBeNull()
@@ -277,7 +279,7 @@ describe('Stationary Movement', () => {
         nestOrientation: 'horizontal' as const,
       })
 
-      const result = calculateStationaryMove(monster, grid, [], () => 0)
+      const result = calculateStationaryMove(monster, grid, [], config, () => 0)
 
       expect(result.nestPosition).toEqual({ x: 3, y: 3 })
       // Should move to an adjacent cell (up, down, left, or right)
@@ -295,7 +297,7 @@ describe('Stationary Movement', () => {
         nestOrientation: 'horizontal' as const,
       })
 
-      const result = calculateStationaryMove(monster, grid, [], () => 0)
+      const result = calculateStationaryMove(monster, grid, [], config, () => 0)
 
       // Should only move to positions within patrol range
       expect(isWithinPatrolRange(result.position, { x: 5, y: 5 })).toBe(true)
@@ -316,7 +318,7 @@ describe('Stationary Movement', () => {
         nestOrientation: null,
       })
 
-      const result = calculateStationaryMove(monster, grid, [], () => 0)
+      const result = calculateStationaryMove(monster, grid, [], config, () => 0)
 
       expect(result.nestPosition).toBeNull()
       expect(result.position).toEqual({ x: 3, y: 2 }) // moved forward (right)
@@ -334,7 +336,7 @@ describe('Stationary Movement', () => {
         nestOrientation: null,
       })
 
-      const result = calculateStationaryMove(monster, grid, [], () => 0)
+      const result = calculateStationaryMove(monster, grid, [], config, () => 0)
 
       expect(result.nestPosition).toBeNull()
       expect(result.position).toEqual({ x: 2, y: 2 }) // stayed, turned
@@ -368,7 +370,7 @@ describe('Stationary Movement', () => {
         phaseTickCounter: 0,
       }
 
-      const result = calculateStationaryMove(lizardman, grid, [prey], () => 0)
+      const result = calculateStationaryMove(lizardman, grid, [prey], config, () => 0)
 
       // Should move up toward prey
       expect(result.position).toEqual({ x: 5, y: 4 })
@@ -395,7 +397,7 @@ describe('Stationary Movement', () => {
         life: 80,
       })
 
-      const result = calculateStationaryMove(poorLizardman, grid, [poorLizardman, richLizardman], () => 0)
+      const result = calculateStationaryMove(poorLizardman, grid, [poorLizardman, richLizardman], config, () => 0)
 
       expect(result.nestPosition).toEqual({ x: 5, y: 5 })
       expect(result.nestOrientation).toBe('horizontal')
@@ -420,7 +422,7 @@ describe('Stationary Movement', () => {
         nestOrientation: 'horizontal' as const,
       })
 
-      const result = calculateStationaryMove(richLizardman, grid, [richLizardman, otherLizardman], () => 0)
+      const result = calculateStationaryMove(richLizardman, grid, [richLizardman, otherLizardman], config, () => 0)
 
       // Should build own nest, NOT adopt the other's
       expect(result.nestPosition).not.toEqual({ x: 5, y: 5 })
@@ -456,7 +458,7 @@ describe('Stationary Movement', () => {
         nestOrientation: 'horizontal' as const,
       }
 
-      const result = calculateStationaryMove(poorLizardman, grid, [poorLizardman, nonLizardman], () => 0)
+      const result = calculateStationaryMove(poorLizardman, grid, [poorLizardman, nonLizardman], config, () => 0)
 
       // Should NOT adopt the gajigajimushi's nest, should fall back to straight movement
       expect(result.nestPosition).toBeNull()
@@ -491,7 +493,7 @@ describe('Stationary Movement', () => {
       }
 
       // With randomFn returning 0, it should pick first patrol option (up: {x:5,y:4})
-      const result = calculateStationaryMove(lizardman, grid, [prey], () => 0)
+      const result = calculateStationaryMove(lizardman, grid, [prey], config, () => 0)
 
       // Should move randomly, not necessarily toward prey
       expect(result.nestPosition).toEqual({ x: 5, y: 5 })

@@ -50,6 +50,7 @@ export interface Cell {
 // Re-export hero types
 export type { HeroEntity, HeroSpawnConfig, HeroState, HeroAttackPattern } from './hero/types'
 import type { HeroEntity, HeroSpawnConfig } from './hero/types'
+import type { GameConfig } from './config'
 
 // Game state
 export interface GameState {
@@ -65,6 +66,7 @@ export interface GameState {
   nextMonsterId: number
   nextHeroId: number
   isGameOver: boolean
+  config: GameConfig
 }
 
 // Game events
