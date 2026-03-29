@@ -195,18 +195,17 @@ const scenarios: Scenario[] = [
     setup() {
       stopGame()
       const grid = makeEmptyArena(12, 10)
-      // 周囲に養分を置く（bud吸収用）
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          grid[4 + dy][5 + dx].nutrientAmount = 5
-        }
-      }
+      // 周囲に養分付き土セルを配置（mobileは土からのみ吸収可能）
+      grid[3][5] = { type: 'soil', nutrientAmount: 3, magicAmount: 0 }
+      grid[5][5] = { type: 'soil', nutrientAmount: 3, magicAmount: 0 }
+      grid[4][4] = { type: 'soil', nutrientAmount: 3, magicAmount: 0 }
+      grid[4][6] = { type: 'soil', nutrientAmount: 3, magicAmount: 0 }
       const state = makeState(grid, [
         {
           type: 'nijirigoke',
           position: { x: 5, y: 4 },
-          life: gameConfig.monsters.nijirigoke.budLifeThreshold!,
-          carryingNutrient: gameConfig.monsters.nijirigoke.budNutrientThreshold!,
+          life: gameConfig.monsters.nijirigoke.life,
+          carryingNutrient: 0,
           phase: 'mobile',
         },
       ])
