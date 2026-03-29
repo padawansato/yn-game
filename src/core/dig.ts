@@ -1,7 +1,3 @@
-import {
-  NUTRIENT_CARRY_CAPACITY,
-  MONSTER_CONFIGS,
-} from './constants'
 import type {
   Cell,
   GameEvent,
@@ -110,15 +106,15 @@ export function dig(
   const totalNutrients = cell.nutrientAmount
 
   // Spawn monster based on nutrient level
-  const monsterType = getMonsterTypeByNutrient(totalNutrients)
-  const config = MONSTER_CONFIGS[monsterType]
+  const monsterType = getMonsterTypeByNutrient(totalNutrients, state.config)
+  const monsterConfig = state.config.monsters[monsterType]
   const { id: monsterId, nextMonsterId } = generateMonsterId(state)
 
   // Life based on nutrients (capped at maxLife)
-  const initialLife = Math.min(totalNutrients, config.life)
+  const initialLife = Math.min(totalNutrients, monsterConfig.life)
   // Remaining nutrients after life allocation go to carryingNutrient + surrounding cells
   const nutrientsAfterLife = totalNutrients - initialLife
-  const carried = Math.min(nutrientsAfterLife, NUTRIENT_CARRY_CAPACITY)
+  const carried = Math.min(nutrientsAfterLife, state.config.nutrient.carryCapacity)
   const remaining = nutrientsAfterLife - carried
 
   const newMonster: Monster = {
@@ -126,13 +122,13 @@ export function dig(
     type: monsterType,
     position: { ...position },
     direction: (['up', 'down', 'left', 'right'] as const)[Math.floor(randomFn() * 4)],
-    pattern: config.pattern,
+    pattern: monsterConfig.pattern,
     phase: INITIAL_PHASE[monsterType],
     phaseTickCounter: 0,
     life: initialLife,
-    maxLife: config.life,
-    attack: config.attack,
-    predationTargets: [...config.predationTargets],
+    maxLife: monsterConfig.life,
+    attack: monsterConfig.attack,
+    predationTargets: [...monsterConfig.predationTargets],
     carryingNutrient: carried,
     nestPosition: null,
     nestOrientation: null,

@@ -3,6 +3,7 @@ import { processCombat } from './combat'
 import type { Cell, Monster } from './types'
 import type { HeroEntity } from './hero/types'
 import { HERO_NUTRIENT_DROP } from './constants'
+import { createDefaultConfig } from './config'
 
 // Helper: create empty grid
 function createGrid(width: number, height: number): Cell[][] {
@@ -56,13 +57,14 @@ function createMonster(overrides: Partial<Monster> = {}): Monster {
 }
 
 describe('processCombat', () => {
+  const config = createDefaultConfig()
   it('hero attacks monster in front cell (one-sided)', () => {
     const grid = createGrid(5, 5)
     // Hero at (2,2) facing right, monster at (3,2) facing down (not facing hero)
     const hero = createHero({ direction: 'right', position: { x: 2, y: 2 } })
     const monster = createMonster({ direction: 'down', position: { x: 3, y: 2 } })
 
-    const result = processCombat([hero], [monster], grid)
+    const result = processCombat([hero], [monster], grid, config)
 
     expect(result.monsters[0].life).toBe(30 - 5) // hero.attack = 5
     expect(result.heroes[0].life).toBe(50) // hero not damaged
@@ -77,7 +79,7 @@ describe('processCombat', () => {
     const hero = createHero({ direction: 'up', position: { x: 2, y: 2 } })
     const monster = createMonster({ direction: 'left', position: { x: 3, y: 2 }, attack: 3 })
 
-    const result = processCombat([hero], [monster], grid)
+    const result = processCombat([hero], [monster], grid, config)
 
     expect(result.heroes[0].life).toBe(50 - 3) // monster.attack = 3
     expect(result.monsters[0].life).toBe(30) // monster not damaged
@@ -92,7 +94,7 @@ describe('processCombat', () => {
     const hero = createHero({ direction: 'right', position: { x: 2, y: 2 } })
     const monster = createMonster({ direction: 'left', position: { x: 3, y: 2 }, attack: 3 })
 
-    const result = processCombat([hero], [monster], grid)
+    const result = processCombat([hero], [monster], grid, config)
 
     expect(result.heroes[0].life).toBe(50 - 3)
     expect(result.monsters[0].life).toBe(30 - 5)
@@ -103,7 +105,7 @@ describe('processCombat', () => {
     const hero = createHero({ direction: 'right', position: { x: 2, y: 2 }, life: 3, attack: 30 })
     const monster = createMonster({ direction: 'left', position: { x: 3, y: 2 }, life: 30, attack: 3 })
 
-    const result = processCombat([hero], [monster], grid)
+    const result = processCombat([hero], [monster], grid, config)
 
     expect(result.heroes[0].life).toBe(0)
     expect(result.heroes[0].state).toBe('dead')
@@ -128,7 +130,7 @@ describe('processCombat', () => {
       phase: 'mobile',
     })
 
-    const result = processCombat([hero], [monster], grid)
+    const result = processCombat([hero], [monster], grid, config)
 
     expect(result.heroes[0].life).toBe(50) // no damage
     // No HERO_COMBAT event when attack=0 and hero also not attacking
@@ -141,7 +143,7 @@ describe('processCombat', () => {
     const hero = createHero({ direction: 'right', position: { x: 2, y: 2 } })
     const monster = createMonster({ direction: 'down', position: { x: 2, y: 2 } })
 
-    const result = processCombat([hero], [monster], grid)
+    const result = processCombat([hero], [monster], grid, config)
 
     // Hero's front is (3,2), monster is at (2,2) → no attack from hero
     // Monster's front is (2,3), hero is at (2,2) → no attack from monster
@@ -156,7 +158,7 @@ describe('processCombat', () => {
     const hero2 = createHero({ id: 'hero-2', direction: 'down', position: { x: 3, y: 1 }, attack: 5 })
     const monster = createMonster({ direction: 'up', position: { x: 3, y: 2 } })
 
-    const result = processCombat([hero1, hero2], [monster], grid)
+    const result = processCombat([hero1, hero2], [monster], grid, config)
 
     // Both heroes attack monster: 5 + 5 = 10
     expect(result.monsters[0].life).toBe(30 - 10)
@@ -173,7 +175,7 @@ describe('processCombat', () => {
       carryingNutrient: 9,
     })
 
-    const result = processCombat([hero], [monster], grid)
+    const result = processCombat([hero], [monster], grid, config)
 
     expect(result.monsters).toHaveLength(0)
     // Nutrient should be distributed to surrounding cells
@@ -191,7 +193,7 @@ describe('processCombat', () => {
     const hero = createHero({ direction: 'up', position: { x: 2, y: 2 }, life: 3 })
     const monster = createMonster({ direction: 'left', position: { x: 3, y: 2 }, attack: 10 })
 
-    const result = processCombat([hero], [monster], grid)
+    const result = processCombat([hero], [monster], grid, config)
 
     expect(result.heroes[0].life).toBeLessThanOrEqual(0)
     expect(result.heroes[0].state).toBe('dead')
@@ -213,7 +215,7 @@ describe('processCombat', () => {
     const hero = createHero({ direction: 'left', position: { x: 0, y: 0 } })
     const monster = createMonster({ direction: 'right', position: { x: 4, y: 4 } })
 
-    const result = processCombat([hero], [monster], grid)
+    const result = processCombat([hero], [monster], grid, config)
 
     expect(result.heroes[0].life).toBe(50)
     expect(result.monsters[0].life).toBe(30)
@@ -226,7 +228,7 @@ describe('processCombat', () => {
     const hero = createHero({ direction: 'right', position: { x: 4, y: 2 } })
     const monster = createMonster({ direction: 'left', position: { x: 0, y: 2 } })
 
-    const result = processCombat([hero], [monster], grid)
+    const result = processCombat([hero], [monster], grid, config)
 
     expect(result.events).toHaveLength(0)
   })

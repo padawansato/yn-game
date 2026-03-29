@@ -1,9 +1,3 @@
-import {
-  NUTRIENT_SPAWN_THRESHOLDS,
-  INITIAL_DIG_POWER,
-  HERO_SPAWN_START_TICK,
-  HERO_SPAWN_INTERVAL,
-} from './constants'
 import { createDefaultConfig } from './config'
 import type { GameConfig } from './config'
 import type {
@@ -25,12 +19,13 @@ export function generateMonsterId(state: GameState): { id: string; nextMonsterId
   return { id, nextMonsterId: state.nextMonsterId + 1 }
 }
 
-export function getMonsterTypeByNutrient(nutrientAmount: number): MonsterType {
-  if (nutrientAmount >= NUTRIENT_SPAWN_THRESHOLDS.LIZARDMAN) {
-    return 'lizardman'
-  }
-  if (nutrientAmount >= NUTRIENT_SPAWN_THRESHOLDS.GAJIGAJIMUSHI) {
-    return 'gajigajimushi'
+export function getMonsterTypeByNutrient(nutrientAmount: number, config: GameConfig): MonsterType {
+  // Sort thresholds descending by minNutrient to check highest first
+  const sorted = [...config.spawn.thresholds].sort((a, b) => b.minNutrient - a.minNutrient)
+  for (const threshold of sorted) {
+    if (nutrientAmount >= threshold.minNutrient) {
+      return threshold.type as MonsterType
+    }
   }
   return 'nijirigoke'
 }
@@ -90,12 +85,12 @@ export function createGameState(
     demonLordPosition,
     heroSpawnConfig: {
       partySize: 1,
-      spawnStartTick: HERO_SPAWN_START_TICK,
-      spawnInterval: HERO_SPAWN_INTERVAL,
+      spawnStartTick: resolvedConfig.hero.spawnStartTick,
+      spawnInterval: resolvedConfig.hero.spawnInterval,
       heroesSpawned: 0,
     },
     totalInitialNutrients: 0,
-    digPower: INITIAL_DIG_POWER,
+    digPower: resolvedConfig.dig.initialPower,
     gameTime: 0,
     nextMonsterId: 0,
     nextHeroId: 0,

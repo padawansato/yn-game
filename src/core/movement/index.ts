@@ -1,4 +1,5 @@
 import type { Cell, Direction, Monster, MonsterPhase, Position } from '../types'
+import type { GameConfig } from '../config'
 import { calculateStraightMove, getForwardPosition, isValidMove } from './straight'
 import { calculateRefractionMove } from './refraction'
 import { calculateStationaryMove } from './stationary'
@@ -59,9 +60,10 @@ export function prioritizePreyDirection(
   monsters: Monster[],
   grid: Cell[][],
   defaultDirection: Direction,
+  config: GameConfig,
   _randomFn: () => number = Math.random
 ): Direction {
-  if (!isHungry(monster) || monster.predationTargets.length === 0) {
+  if (!isHungry(monster, config) || monster.predationTargets.length === 0) {
     return defaultDirection
   }
 
@@ -100,6 +102,7 @@ export function calculateMove(
   monster: Monster,
   grid: Cell[][],
   monsters: Monster[],
+  config: GameConfig,
   randomFn: () => number = Math.random
 ): MoveResult {
   // Immobile phases stay in place
@@ -136,7 +139,7 @@ export function calculateMove(
     }
     case 'stationary': {
       // Stationary pattern handles prey detection internally
-      const stationaryResult = calculateStationaryMove(monster, grid, monsters, randomFn)
+      const stationaryResult = calculateStationaryMove(monster, grid, monsters, config, randomFn)
       result = {
         ...stationaryResult,
       }
@@ -146,12 +149,13 @@ export function calculateMove(
   }
 
   // Apply hunger behavior for predators (non-stationary patterns only)
-  if (isHungry(monster) && monster.predationTargets.length > 0) {
+  if (isHungry(monster, config) && monster.predationTargets.length > 0) {
     const preyDirection = prioritizePreyDirection(
       monster,
       monsters,
       grid,
       result.direction,
+      config,
       randomFn
     )
 

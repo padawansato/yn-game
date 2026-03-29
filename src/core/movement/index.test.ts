@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import type { Cell, Monster } from '../types'
 import { isHungry, detectPrey, prioritizePreyDirection, calculateMove } from './index'
+import { createDefaultConfig } from '../config'
+
+const config = createDefaultConfig()
 
 function createGrid(width: number, height: number, type: Cell['type'] = 'empty'): Cell[][] {
   return Array.from({ length: height }, () =>
@@ -32,17 +35,17 @@ describe('Hunger System', () => {
   describe('isHungry', () => {
     it('should return true when life below 30% of maxLife', () => {
       const monster = createMonster({ life: 8, maxLife: 30 })
-      expect(isHungry(monster)).toBe(true)
+      expect(isHungry(monster, config)).toBe(true)
     })
 
     it('should return false when life above 30% of maxLife', () => {
       const monster = createMonster({ life: 20, maxLife: 30 })
-      expect(isHungry(monster)).toBe(false)
+      expect(isHungry(monster, config)).toBe(false)
     })
 
     it('should return false when life exactly 30% of maxLife', () => {
       const monster = createMonster({ life: 9, maxLife: 30 })
-      expect(isHungry(monster)).toBe(false)
+      expect(isHungry(monster, config)).toBe(false)
     })
   })
 
@@ -149,7 +152,7 @@ describe('Hunger System', () => {
         maxLife: 30,
       })
 
-      const result = prioritizePreyDirection(predator, [], grid, 'up')
+      const result = prioritizePreyDirection(predator, [], grid, 'up', config)
       expect(result).toBe('up')
     })
 
@@ -180,7 +183,7 @@ describe('Hunger System', () => {
         phaseTickCounter: 0,
       }
 
-      const result = prioritizePreyDirection(predator, [predator, prey], grid, 'up')
+      const result = prioritizePreyDirection(predator, [predator, prey], grid, 'up', config)
       expect(result).toBe('right')
     })
   })
@@ -215,7 +218,7 @@ describe('Hunger System', () => {
         phaseTickCounter: 0,
       }
 
-      const result = calculateMove(predator, grid, [predator, prey], () => 0)
+      const result = calculateMove(predator, grid, [predator, prey], config, () => 0)
 
       // Should move toward prey (down)
       expect(result.direction).toBe('down')
@@ -233,7 +236,7 @@ describe('Hunger System', () => {
         predationTargets: [],
       })
 
-      const result = calculateMove(monster, grid, [monster], () => 0)
+      const result = calculateMove(monster, grid, [monster], config, () => 0)
 
       expect(result.position).toEqual({ x: 3, y: 2 })
       expect(result.direction).toBe('right')

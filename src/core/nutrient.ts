@@ -1,9 +1,5 @@
 import type { Cell, GameState, Monster, Position } from './types'
-import {
-  NUTRIENT_CARRY_CAPACITY,
-  NUTRIENT_RELEASE_THRESHOLD,
-  MAX_NUTRIENT_PER_CELL,
-} from './constants'
+import type { GameConfig } from './config'
 
 /**
  * Generate exponentially distributed random value
@@ -20,6 +16,7 @@ export function exponentialRandom(scale: number = 1, randomFn: () => number = Ma
 export function initializeNutrients(
   grid: Cell[][],
   totalAmount: number,
+  config: GameConfig,
   randomFn: () => number = Math.random
 ): { grid: Cell[][] } {
   const soilCells: Position[] = []
@@ -42,7 +39,7 @@ export function initializeNutrients(
 
   const normalizedValues = rawValues.map((raw) => {
     const normalized = Math.round((raw / rawSum) * totalAmount)
-    return Math.min(MAX_NUTRIENT_PER_CELL, Math.max(0, normalized))
+    return Math.min(config.grid.maxNutrientPerCell, Math.max(0, normalized))
   })
 
   let currentTotal = normalizedValues.reduce((sum, v) => sum + v, 0)
@@ -50,7 +47,7 @@ export function initializeNutrients(
 
   while (diff !== 0) {
     for (let i = 0; i < normalizedValues.length && diff !== 0; i++) {
-      if (diff > 0 && normalizedValues[i] < MAX_NUTRIENT_PER_CELL) {
+      if (diff > 0 && normalizedValues[i] < config.grid.maxNutrientPerCell) {
         normalizedValues[i]++
         diff--
       } else if (diff < 0 && normalizedValues[i] > 0) {
@@ -171,7 +168,8 @@ export function getSurroundingCells(position: Position, grid: Cell[][]): Positio
  */
 export function absorbNutrient(
   monster: Monster,
-  grid: Cell[][]
+  grid: Cell[][],
+  config: GameConfig
 ): { monster: Monster; grid: Cell[][] } {
   if (monster.type !== 'nijirigoke') {
     return { monster, grid }
@@ -179,7 +177,7 @@ export function absorbNutrient(
 
   // Bud phase: absorb from surrounding 9 cells (soil and empty)
   if (monster.phase === 'bud') {
-    return absorbNutrientWideRange(monster, grid)
+    return absorbNutrientWideRange(monster, grid, config)
   }
 
   const adjacentSoil = getAdjacentSoilCells(monster.position, grid)
@@ -220,7 +218,7 @@ export function absorbNutrient(
   }
 
   const soilNutrients = grid[targetSoil.y][targetSoil.x].nutrientAmount
-  const canAbsorb = NUTRIENT_CARRY_CAPACITY - monster.carryingNutrient
+  const canAbsorb = config.nutrient.carryCapacity - monster.carryingNutrient
   const toAbsorb = Math.min(soilNutrients, canAbsorb)
 
   if (toAbsorb <= 0) {
@@ -249,13 +247,14 @@ export function absorbNutrient(
  */
 export function releaseNutrient(
   monster: Monster,
-  grid: Cell[][]
+  grid: Cell[][],
+  config: GameConfig
 ): { monster: Monster; grid: Cell[][] } {
   if (monster.type !== 'nijirigoke') {
     return { monster, grid }
   }
 
-  if (monster.carryingNutrient < NUTRIENT_RELEASE_THRESHOLD) {
+  if (monster.carryingNutrient < config.nutrient.releaseThreshold) {
     return { monster, grid }
   }
 
@@ -366,10 +365,11 @@ export function isWorldDying(state: GameState, threshold: number = 0.1): boolean
  */
 function absorbNutrientWideRange(
   monster: Monster,
-  grid: Cell[][]
+  grid: Cell[][],
+  config: GameConfig
 ): { monster: Monster; grid: Cell[][] } {
   const surroundingCells = getSurroundingCells(monster.position, grid)
-  const canAbsorb = NUTRIENT_CARRY_CAPACITY - monster.carryingNutrient
+  const canAbsorb = config.nutrient.carryCapacity - monster.carryingNutrient
   if (canAbsorb <= 0) {
     return { monster, grid }
   }

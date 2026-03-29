@@ -8,11 +8,11 @@ import {
   initializeNutrients,
   getTotalNutrients,
   isWorldDying,
-  MONSTER_CONFIGS,
-  createDefaultConfig,
 } from './index'
 import { createSeededRandom } from './random'
 import { processPredation } from './predation'
+import { createDefaultConfig } from './config'
+import { MONSTER_CONFIGS } from './constants'
 
 function createGrid(width: number, height: number, type: Cell['type'] = 'empty'): Cell[][] {
   return Array.from({ length: height }, () =>
@@ -33,13 +33,13 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
       spawnInterval: 10,
       heroesSpawned: 0,
     },
+    config: createDefaultConfig(),
     totalInitialNutrients: 100,
     digPower: 100,
     gameTime: 0,
     nextMonsterId: 0,
     nextHeroId: 0,
     isGameOver: false,
-    config: createDefaultConfig(),
     ...overrides,
   }
 }
@@ -95,7 +95,7 @@ describe('Integration Tests', () => {
       grid[2][1].type = 'empty'
 
       // Initialize with lots of nutrients
-      const { grid: initializedGrid } = initializeNutrients(grid, 1000)
+      const { grid: initializedGrid } = initializeNutrients(grid, 1000, createDefaultConfig())
 
       let state = createGameState({
         grid: initializedGrid,

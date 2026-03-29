@@ -46,7 +46,7 @@ export function tick(
   const moveResult = applyMovements(resolvedMoves)
 
   // 3.5. Process nest establishment cost
-  const nestResult = processNestEstablishment(moveResult.monsters, originalNestPositions)
+  const nestResult = processNestEstablishment(moveResult.monsters, originalNestPositions, state.config)
   allEvents.push(...nestResult.events)
 
   // 4. Process predation (same cell)
@@ -54,14 +54,15 @@ export function tick(
   allEvents.push(...predationResult.events)
 
   // 5. Process nutrient absorption/release for Nijirigoke (before life decrease)
-  const nutrientResult = processNutrientInteractions(predationResult.monsters, predationResult.grid)
+  const nutrientResult = processNutrientInteractions(predationResult.monsters, predationResult.grid, state.config)
   allEvents.push(...nutrientResult.events)
 
   // 6. Decrease life for moved monsters (and release nutrients on death)
   const lifeResult = decreaseLifeForMoved(
     nutrientResult.monsters,
     originalPositions,
-    nutrientResult.grid
+    nutrientResult.grid,
+    state.config
   )
   allEvents.push(...lifeResult.events)
 
@@ -136,7 +137,7 @@ export function tick(
   }
 
   // 11. Process combat
-  const combatResult = processCombat(currentHeroes, currentMonsters, currentGrid)
+  const combatResult = processCombat(currentHeroes, currentMonsters, currentGrid, state.config)
   currentHeroes = combatResult.heroes.filter((h) => h.state !== 'dead')
   currentMonsters = combatResult.monsters
   currentGrid = combatResult.grid

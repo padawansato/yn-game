@@ -1,4 +1,4 @@
-import type { MovementPattern } from './types'
+import type { MovementPattern, MonsterType } from './types'
 import {
   MONSTER_CONFIGS,
   NUTRIENT_CARRY_CAPACITY,
@@ -38,7 +38,7 @@ export interface MonsterTypeConfig {
   pattern: MovementPattern
   life: number
   attack: number
-  predationTargets: string[]
+  predationTargets: MonsterType[]
   canCarryNutrients: boolean
   // Nijirigoke lifecycle
   budNutrientThreshold?: number

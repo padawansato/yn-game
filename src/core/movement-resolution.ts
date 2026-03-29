@@ -18,7 +18,7 @@ export function calculateAllMoves(
 ): PlannedMove[] {
   return state.monsters.map((monster) => ({
     monster,
-    result: calculateMove(monster, state.grid, state.monsters, randomFn),
+    result: calculateMove(monster, state.grid, state.monsters, state.config, randomFn),
   }))
 }
 

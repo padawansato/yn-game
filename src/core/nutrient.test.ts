@@ -38,11 +38,13 @@ function createMonster(overrides: Partial<Monster> = {}): Monster {
   }
 }
 
+const config = createDefaultConfig()
+
 describe('Nutrient System', () => {
   describe('initializeNutrients', () => {
     it('should distribute nutrients across soil cells', () => {
       const grid = createGrid(3, 3, 'soil')
-      const { grid: newGrid } = initializeNutrients(grid, 90)
+      const { grid: newGrid } = initializeNutrients(grid, 90, config)
 
       let total = 0
       for (const row of newGrid) {
@@ -56,7 +58,7 @@ describe('Nutrient System', () => {
 
     it('should not distribute nutrients to non-soil cells', () => {
       const grid = createGrid(3, 3, 'empty')
-      const { grid: newGrid } = initializeNutrients(grid, 100)
+      const { grid: newGrid } = initializeNutrients(grid, 100, config)
 
       let total = 0
       for (const row of newGrid) {
@@ -73,7 +75,7 @@ describe('Nutrient System', () => {
       grid[0][0].type = 'wall'
       grid[1][1].type = 'empty'
 
-      const { grid: newGrid } = initializeNutrients(grid, 20)
+      const { grid: newGrid } = initializeNutrients(grid, 20, config)
 
       expect(newGrid[0][0].nutrientAmount).toBe(0) // wall
       expect(newGrid[1][1].nutrientAmount).toBe(0) // empty
@@ -126,7 +128,7 @@ describe('Nutrient System', () => {
       grid[1][2].nutrientAmount = 5 // soil to the right has nutrients
 
       const monster = createMonster({ position: { x: 1, y: 1 }, direction: 'right' })
-      const result = absorbNutrient(monster, grid)
+      const result = absorbNutrient(monster, grid, config)
 
       expect(result.monster.carryingNutrient).toBe(5)
       expect(result.grid[1][2].nutrientAmount).toBe(0)
@@ -139,7 +141,7 @@ describe('Nutrient System', () => {
       grid[1][2].nutrientAmount = 3 // right (facing) has less
 
       const monster = createMonster({ position: { x: 1, y: 1 }, direction: 'right' })
-      const result = absorbNutrient(monster, grid)
+      const result = absorbNutrient(monster, grid, config)
 
       // Should absorb from facing direction first
       expect(result.monster.carryingNutrient).toBe(3)
@@ -156,7 +158,7 @@ describe('Nutrient System', () => {
         position: { x: 1, y: 1 },
         carryingNutrient: 10, // at capacity (NUTRIENT_CARRY_CAPACITY = 10)
       })
-      const result = absorbNutrient(monster, grid)
+      const result = absorbNutrient(monster, grid, config)
 
       expect(result.monster.carryingNutrient).toBe(10)
       expect(result.grid[1][2].nutrientAmount).toBe(5)
@@ -172,7 +174,7 @@ describe('Nutrient System', () => {
         type: 'gajigajimushi',
         pattern: 'refraction',
       })
-      const result = absorbNutrient(monster, grid)
+      const result = absorbNutrient(monster, grid, config)
 
       expect(result.monster.carryingNutrient).toBe(0)
       expect(result.grid[1][2].nutrientAmount).toBe(5)
@@ -189,7 +191,7 @@ describe('Nutrient System', () => {
         direction: 'right',
         carryingNutrient: 9, // >= NUTRIENT_RELEASE_THRESHOLD (8)
       })
-      const result = releaseNutrient(monster, grid)
+      const result = releaseNutrient(monster, grid, config)
 
       expect(result.monster.carryingNutrient).toBe(1) // keeps 1
       // Facing direction is right, so release to (2, 1) = grid[1][2]
@@ -204,7 +206,7 @@ describe('Nutrient System', () => {
         position: { x: 1, y: 1 },
         carryingNutrient: 1, // < NUTRIENT_RELEASE_THRESHOLD (4)
       })
-      const result = releaseNutrient(monster, grid)
+      const result = releaseNutrient(monster, grid, config)
 
       expect(result.monster.carryingNutrient).toBe(1)
     })
@@ -218,7 +220,7 @@ describe('Nutrient System', () => {
         direction: 'right',
         carryingNutrient: 3,
       })
-      const result = releaseNutrient(monster, grid)
+      const result = releaseNutrient(monster, grid, config)
 
       expect(result.monster.carryingNutrient).toBe(3) // no release
     })
@@ -232,7 +234,7 @@ describe('Nutrient System', () => {
         direction: 'right',
         carryingNutrient: 8,
       })
-      const result = releaseNutrient(monster, grid)
+      const result = releaseNutrient(monster, grid, config)
 
       expect(result.monster.carryingNutrient).toBe(1) // released 7, keeps 1
       expect(result.grid[1][2].nutrientAmount).toBe(7)
@@ -248,7 +250,7 @@ describe('Nutrient System', () => {
         pattern: 'refraction',
         carryingNutrient: 5,
       })
-      const result = releaseNutrient(monster, grid)
+      const result = releaseNutrient(monster, grid, config)
 
       expect(result.monster.carryingNutrient).toBe(5)
     })
@@ -264,7 +266,7 @@ describe('Nutrient System', () => {
         direction: 'right',
         carryingNutrient: 10,
       })
-      const result = releaseNutrient(monster, grid)
+      const result = releaseNutrient(monster, grid, config)
 
       // Conservation law: 95 + 9 = 104 (no cap, nutrients preserved)
       expect(result.grid[1][2].nutrientAmount).toBe(104)
@@ -383,7 +385,6 @@ describe('Nutrient System', () => {
         nextMonsterId: 0,
         nextHeroId: 0,
         isGameOver: false,
-        config: createDefaultConfig(),
       }
 
       const total = getTotalNutrients(state)
@@ -409,7 +410,6 @@ describe('Nutrient System', () => {
         nextMonsterId: 0,
         nextHeroId: 0,
         isGameOver: false,
-        config: createDefaultConfig(),
       }
 
       expect(isWorldDying(state, 0.1)).toBe(true) // 5 < 100 * 0.1
@@ -432,7 +432,6 @@ describe('Nutrient System', () => {
         nextMonsterId: 0,
         nextHeroId: 0,
         isGameOver: false,
-        config: createDefaultConfig(),
       }
 
       expect(isWorldDying(state, 0.1)).toBe(false) // 50 >= 100 * 0.1
@@ -468,7 +467,7 @@ describe('Nutrient System', () => {
   describe('initializeNutrients sparse distribution', () => {
     it('should distribute total nutrients correctly', () => {
       const grid = createGrid(5, 5, 'soil')
-      const { grid: newGrid } = initializeNutrients(grid, 500)
+      const { grid: newGrid } = initializeNutrients(grid, 500, config)
 
       let total = 0
       for (const row of newGrid) {
@@ -482,7 +481,7 @@ describe('Nutrient System', () => {
 
     it('should have sparse distribution (most cells low, few high)', () => {
       const grid = createGrid(10, 10, 'soil')
-      const { grid: newGrid } = initializeNutrients(grid, 1000)
+      const { grid: newGrid } = initializeNutrients(grid, 1000, config)
 
       const values: number[] = []
       for (const row of newGrid) {
@@ -503,7 +502,7 @@ describe('Nutrient System', () => {
 
     it('should clamp values to 0-100 range', () => {
       const grid = createGrid(5, 5, 'soil')
-      const { grid: newGrid } = initializeNutrients(grid, 2500)
+      const { grid: newGrid } = initializeNutrients(grid, 2500, config)
 
       for (const row of newGrid) {
         for (const cell of row) {
@@ -521,7 +520,7 @@ describe('Nutrient System', () => {
         return 0.5
       }
 
-      initializeNutrients(grid, 90, mockRandom)
+      initializeNutrients(grid, 90, config, mockRandom)
 
       expect(callCount).toBe(9)
     })

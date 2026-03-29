@@ -1,18 +1,3 @@
-import {
-  BUD_NUTRIENT_THRESHOLD,
-  FLOWER_NUTRIENT_THRESHOLD,
-  PUPA_NUTRIENT_THRESHOLD,
-  PUPA_DURATION,
-  LAYING_NUTRIENT_THRESHOLD,
-  LAYING_LIFE_THRESHOLD,
-  LAYING_DURATION,
-  EGG_HATCH_DURATION,
-  MOVEMENT_LIFE_COST,
-  MONSTER_CONFIGS,
-  GAJI_REPRO_LIFE_THRESHOLD,
-  GAJI_REPRO_LIFE_COST,
-  MOYOMOYO_DAMAGE,
-} from './constants'
 import type {
   Cell,
   GameEvent,
@@ -20,6 +5,7 @@ import type {
   Monster,
   Position,
 } from './types'
+import type { GameConfig } from './config'
 import {
   getSurroundingCells,
   releaseNutrientsOnDeath,
@@ -44,7 +30,8 @@ function generateId(counter: IdCounter): string {
 export function applyMoyomoyoAttacks(
   monsters: Monster[],
   grid: Cell[][],
-  events: GameEvent[]
+  events: GameEvent[],
+  config: GameConfig
 ): { monsters: Monster[]; grid: Cell[][] } {
   const flowers = monsters.filter(
     (m) => m.type === 'nijirigoke' && m.phase === 'flower'
@@ -72,18 +59,19 @@ export function applyMoyomoyoAttacks(
 
       // Accumulate damage
       const prevDamage = damageMap.get(target.id) ?? 0
-      damageMap.set(target.id, prevDamage + MOYOMOYO_DAMAGE)
+      const moyomoyoDamage = config.monsters.nijirigoke.moyomoyoDamage!
+      damageMap.set(target.id, prevDamage + moyomoyoDamage)
 
       events.push({
         type: 'MOYOMOYO_ATTACK',
         attackerId: flower.id,
         targetId: target.id,
-        damage: MOYOMOYO_DAMAGE,
+        damage: moyomoyoDamage,
         position: { ...target.position },
       })
 
       // Check if accumulated damage kills the target
-      const totalDamage = prevDamage + MOYOMOYO_DAMAGE
+      const totalDamage = prevDamage + moyomoyoDamage
       if (target.life - totalDamage <= 0) {
         deadIds.add(target.id)
       }
@@ -131,8 +119,10 @@ export function processPhaseTransitions(state: GameState): {
   let currentGrid = state.grid
   const idCounter: IdCounter = { value: state.nextMonsterId }
 
+  const { config } = state
+
   for (const monster of state.monsters) {
-    const result = processMonsterPhase(monster, currentGrid, idCounter, events, newMonsters)
+    const result = processMonsterPhase(monster, currentGrid, idCounter, events, newMonsters, config)
     // Filter out dead monsters (life < 0 signals death after reproduction)
     if (result.monster.life >= 0) {
       updatedMonsters.push(result.monster)
@@ -142,7 +132,7 @@ export function processPhaseTransitions(state: GameState): {
 
   // Apply moyomoyo attacks from flower-phase Nijirigoke
   const allMonsters = [...updatedMonsters, ...newMonsters]
-  const moyomoyoResult = applyMoyomoyoAttacks(allMonsters, currentGrid, events)
+  const moyomoyoResult = applyMoyomoyoAttacks(allMonsters, currentGrid, events, config)
 
   // Separate new monsters from the result (for the newMonsters return field)
   const moyomoyoNewIds = new Set(newMonsters.map((m) => m.id))
@@ -162,15 +152,16 @@ function processMonsterPhase(
   grid: Cell[][],
   idCounter: IdCounter,
   events: GameEvent[],
-  newMonsters: Monster[]
+  newMonsters: Monster[],
+  config: GameConfig
 ): { monster: Monster; grid: Cell[][] } {
   switch (monster.type) {
     case 'nijirigoke':
-      return processNijirigokePhase(monster, grid, idCounter, events, newMonsters)
+      return processNijirigokePhase(monster, grid, idCounter, events, newMonsters, config)
     case 'gajigajimushi':
-      return processGajigajimushiPhase(monster, grid, idCounter, events, newMonsters)
+      return processGajigajimushiPhase(monster, grid, idCounter, events, newMonsters, config)
     case 'lizardman':
-      return processLizardmanPhase(monster, grid, idCounter, events, newMonsters)
+      return processLizardmanPhase(monster, grid, idCounter, events, newMonsters, config)
     default:
       return { monster, grid }
   }
@@ -181,14 +172,16 @@ function processNijirigokePhase(
   grid: Cell[][],
   idCounter: IdCounter,
   events: GameEvent[],
-  newMonsters: Monster[]
+  newMonsters: Monster[],
+  config: GameConfig
 ): { monster: Monster; grid: Cell[][] } {
+  const nijiConfig = config.monsters.nijirigoke
   const phase = monster.phase
 
   // mobile → bud
   if (
     phase === 'mobile' &&
-    monster.carryingNutrient >= BUD_NUTRIENT_THRESHOLD
+    monster.carryingNutrient >= nijiConfig.budNutrientThreshold!
   ) {
     events.push({
       type: 'PHASE_TRANSITION',
@@ -200,7 +193,7 @@ function processNijirigokePhase(
   }
 
   // bud → flower
-  if (phase === 'bud' && monster.carryingNutrient >= FLOWER_NUTRIENT_THRESHOLD) {
+  if (phase === 'bud' && monster.carryingNutrient >= nijiConfig.flowerNutrientThreshold!) {
     events.push({
       type: 'PHASE_TRANSITION',
       monsterId: monster.id,
@@ -212,7 +205,7 @@ function processNijirigokePhase(
 
   // flower: life drain at normal rate + transition to withered
   if (phase === 'flower') {
-    const newLife = monster.life - MOVEMENT_LIFE_COST
+    const newLife = monster.life - config.movement.lifeCost
     if (newLife <= 0) {
       events.push({
         type: 'PHASE_TRANSITION',
@@ -261,8 +254,8 @@ function processNijirigokePhase(
           pattern: 'straight',
           phase: 'mobile',
           phaseTickCounter: 0,
-          life: MONSTER_CONFIGS.nijirigoke.life,
-          maxLife: MONSTER_CONFIGS.nijirigoke.life,
+          life: nijiConfig.life,
+          maxLife: nijiConfig.life,
           attack: 0,
           predationTargets: [],
           carryingNutrient: nutrientsPerChild + extra,
@@ -296,12 +289,14 @@ function processGajigajimushiPhase(
   grid: Cell[][],
   idCounter: IdCounter,
   events: GameEvent[],
-  newMonsters: Monster[]
+  newMonsters: Monster[],
+  config: GameConfig
 ): { monster: Monster; grid: Cell[][] } {
+  const gajiConfig = config.monsters.gajigajimushi
   const phase = monster.phase
 
   // larva → pupa (requires nutrients + at least 2 adjacent empty cells)
-  if (phase === 'larva' && monster.carryingNutrient >= PUPA_NUTRIENT_THRESHOLD) {
+  if (phase === 'larva' && monster.carryingNutrient >= gajiConfig.pupaNutrientThreshold!) {
     const adjacentCells = getSurroundingCells(monster.position, grid)
     const emptyCellCount = adjacentCells.filter(
       (pos) =>
@@ -322,7 +317,7 @@ function processGajigajimushiPhase(
   // pupa → adult (after PUPA_DURATION ticks)
   if (phase === 'pupa') {
     const newCounter = monster.phaseTickCounter + 1
-    if (newCounter >= PUPA_DURATION) {
+    if (newCounter >= gajiConfig.pupaDuration!) {
       events.push({
         type: 'PHASE_TRANSITION',
         monsterId: monster.id,
@@ -337,8 +332,8 @@ function processGajigajimushiPhase(
   // adult: reproduce (spawn 1 larva, costs nutrients and life)
   if (
     phase === 'adult' &&
-    monster.carryingNutrient >= PUPA_NUTRIENT_THRESHOLD &&
-    monster.life > GAJI_REPRO_LIFE_THRESHOLD
+    monster.carryingNutrient >= gajiConfig.pupaNutrientThreshold! &&
+    monster.life > gajiConfig.reproLifeThreshold!
   ) {
     const surroundingCells = getSurroundingCells(monster.position, grid)
     const emptyCells = surroundingCells.filter(
@@ -359,10 +354,10 @@ function processGajigajimushiPhase(
         pattern: 'refraction',
         phase: 'larva',
         phaseTickCounter: 0,
-        life: MONSTER_CONFIGS.gajigajimushi.life,
-        maxLife: MONSTER_CONFIGS.gajigajimushi.life,
-        attack: MONSTER_CONFIGS.gajigajimushi.attack,
-        predationTargets: [...MONSTER_CONFIGS.gajigajimushi.predationTargets],
+        life: gajiConfig.life,
+        maxLife: gajiConfig.life,
+        attack: gajiConfig.attack,
+        predationTargets: [...gajiConfig.predationTargets],
         carryingNutrient: childNutrients,
         nestPosition: null,
         nestOrientation: null,
@@ -379,7 +374,7 @@ function processGajigajimushiPhase(
         monster: {
           ...monster,
           carryingNutrient: monster.carryingNutrient - childNutrients,
-          life: monster.life - GAJI_REPRO_LIFE_COST,
+          life: monster.life - gajiConfig.reproLifeCost!,
         },
         grid,
       }
@@ -394,8 +389,10 @@ function processLizardmanPhase(
   grid: Cell[][],
   idCounter: IdCounter,
   events: GameEvent[],
-  newMonsters: Monster[]
+  newMonsters: Monster[],
+  config: GameConfig
 ): { monster: Monster; grid: Cell[][] } {
+  const lizConfig = config.monsters.lizardman
   const phase = monster.phase
 
   // normal/nesting → laying (must be at nest center)
@@ -405,8 +402,8 @@ function processLizardmanPhase(
     monster.nestOrientation &&
     monster.position.x === monster.nestPosition.x &&
     monster.position.y === monster.nestPosition.y &&
-    monster.carryingNutrient >= LAYING_NUTRIENT_THRESHOLD &&
-    monster.life >= LAYING_LIFE_THRESHOLD
+    monster.carryingNutrient >= lizConfig.layingNutrientThreshold! &&
+    monster.life >= lizConfig.layingLifeThreshold!
   ) {
     events.push({
       type: 'PHASE_TRANSITION',
@@ -420,7 +417,7 @@ function processLizardmanPhase(
   // laying → spawn egg (after LAYING_DURATION ticks)
   if (phase === 'laying') {
     const newCounter = monster.phaseTickCounter + 1
-    if (newCounter >= LAYING_DURATION) {
+    if (newCounter >= lizConfig.layingDuration!) {
       // Spawn egg entity
       const eggId = generateId(idCounter)
       const eggNutrients = Math.floor(monster.carryingNutrient / 2)
@@ -465,7 +462,7 @@ function processLizardmanPhase(
   // egg → hatch (after EGG_HATCH_DURATION ticks)
   if (phase === 'egg') {
     const newCounter = monster.phaseTickCounter + 1
-    if (newCounter >= EGG_HATCH_DURATION) {
+    if (newCounter >= lizConfig.eggHatchDuration!) {
       // Egg hatches into a baby lizardman
       events.push({
         type: 'EGG_HATCHED',
@@ -477,10 +474,10 @@ function processLizardmanPhase(
           ...monster,
           phase: 'normal',
           phaseTickCounter: 0,
-          life: MONSTER_CONFIGS.lizardman.life,
-          maxLife: MONSTER_CONFIGS.lizardman.life,
-          attack: MONSTER_CONFIGS.lizardman.attack,
-          predationTargets: [...MONSTER_CONFIGS.lizardman.predationTargets],
+          life: lizConfig.life,
+          maxLife: lizConfig.life,
+          attack: lizConfig.attack,
+          predationTargets: [...lizConfig.predationTargets],
         },
         grid,
       }

@@ -8,25 +8,21 @@ import {
   getTotalNutrients,
   GameLoop,
   createSeededRandom,
-  LAYING_NUTRIENT_THRESHOLD,
   getNestCells,
-  LAYING_LIFE_THRESHOLD,
-  PUPA_NUTRIENT_THRESHOLD,
-  BUD_NUTRIENT_THRESHOLD,
-  BUD_LIFE_THRESHOLD,
-  MONSTER_CONFIGS,
-  HERO_SPAWN_START_TICK,
   type GameState,
   type Cell,
   type Monster,
   type MonsterType,
 } from './core'
+import { createDefaultConfig } from './core/config'
+
+const gameConfig = createDefaultConfig()
 
 // Initialize game
 function createInitialState(): GameState {
   const state = createGameState(10, 8, 1.0)
   const totalNutrients = 200
-  const { grid } = initializeNutrients(state.grid, totalNutrients)
+  const { grid } = initializeNutrients(state.grid, totalNutrients, state.config)
 
   // テスト用: エントリーポイント近くに高養分土を配置
   grid[2][6].nutrientAmount = 20 // リザードマン用 (17以上)
@@ -56,7 +52,7 @@ function triggerHeroPhase() {
 
 function executeTickWithEvents() {
   // 制限時間到達 → 魔王配置フェーズへ
-  if (!heroesTriggered.value && gameState.value.gameTime >= HERO_SPAWN_START_TICK) {
+  if (!heroesTriggered.value && gameState.value.gameTime >= gameConfig.hero.spawnStartTick) {
     triggerHeroPhase()
     return
   }
@@ -185,8 +181,8 @@ const scenarios: Scenario[] = [
           position: { x: 5, y: 4 },
           nestPosition: { x: 5, y: 4 },
           nestOrientation: 'horizontal' as const,
-          life: LAYING_LIFE_THRESHOLD + 20,
-          carryingNutrient: LAYING_NUTRIENT_THRESHOLD + 5,
+          life: gameConfig.monsters.lizardman.layingLifeThreshold! + 20,
+          carryingNutrient: gameConfig.monsters.lizardman.layingNutrientThreshold! + 5,
           phase: 'normal',
         },
       ])
@@ -209,8 +205,8 @@ const scenarios: Scenario[] = [
         {
           type: 'nijirigoke',
           position: { x: 5, y: 4 },
-          life: BUD_LIFE_THRESHOLD,
-          carryingNutrient: BUD_NUTRIENT_THRESHOLD,
+          life: gameConfig.monsters.nijirigoke.budLifeThreshold!,
+          carryingNutrient: gameConfig.monsters.nijirigoke.budNutrientThreshold!,
           phase: 'mobile',
         },
       ])
@@ -228,7 +224,7 @@ const scenarios: Scenario[] = [
           type: 'gajigajimushi',
           position: { x: 5, y: 4 },
           life: 25,
-          carryingNutrient: PUPA_NUTRIENT_THRESHOLD + 3,
+          carryingNutrient: gameConfig.monsters.gajigajimushi.pupaNutrientThreshold! + 3,
           phase: 'larva',
         },
       ])
@@ -309,19 +305,19 @@ function makeState(grid: Cell[][], monsterSetups: MonsterSetup[]): GameState {
   monsterIdCounter = 0
   const monsters: Monster[] = monsterSetups.map((s) => {
     monsterIdCounter++
-    const config = MONSTER_CONFIGS[s.type]
+    const mConfig = gameConfig.monsters[s.type]
     return {
       id: `monster-${monsterIdCounter}`,
       type: s.type,
       position: { ...s.position },
       direction: 'right' as const,
-      pattern: config.pattern,
+      pattern: mConfig.pattern,
       phase: s.phase,
       phaseTickCounter: 0,
       life: s.life,
-      maxLife: config.life,
-      attack: config.attack,
-      predationTargets: [...config.predationTargets],
+      maxLife: mConfig.life,
+      attack: mConfig.attack,
+      predationTargets: [...mConfig.predationTargets],
       carryingNutrient: s.carryingNutrient,
       nestPosition: s.nestPosition ? { ...s.nestPosition } : null,
       nestOrientation: s.nestOrientation ?? null,
@@ -650,9 +646,9 @@ function getNutrientLevel(amount: number): 'low' | 'mid' | 'high' | null {
         <span>ゲーム時間: {{ gameState.gameTime }}</span>
         <span
           v-if="!heroesTriggered"
-          :class="['hero-timer', { 'hero-timer-urgent': HERO_SPAWN_START_TICK - gameState.gameTime <= 20 }]"
+          :class="['hero-timer', { 'hero-timer-urgent': gameConfig.hero.spawnStartTick - gameState.gameTime <= 20 }]"
         >
-          勇者到来まで: {{ HERO_SPAWN_START_TICK - gameState.gameTime }}tick
+          勇者到来まで: {{ gameConfig.hero.spawnStartTick - gameState.gameTime }}tick
         </span>
         <span>養分: {{ totalNutrients }} / {{ gameState.totalInitialNutrients }}</span>
         <span :class="['dig-power', { 'dig-power-exhausted': gameState.digPower <= 0 }]">

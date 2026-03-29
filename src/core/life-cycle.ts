@@ -1,14 +1,10 @@
-import {
-  MOVEMENT_LIFE_COST,
-  NEST_NUTRIENT_COST,
-  NEST_LIFE_COST,
-} from './constants'
 import type {
   Cell,
   GameEvent,
   Monster,
   Position,
 } from './types'
+import type { GameConfig } from './config'
 import {
   absorbNutrient,
   releaseNutrient,
@@ -20,7 +16,8 @@ import {
  */
 export function processNestEstablishment(
   monsters: Monster[],
-  originalNestPositions: Map<string, Position | null>
+  originalNestPositions: Map<string, Position | null>,
+  config: GameConfig
 ): { monsters: Monster[]; events: GameEvent[] } {
   const events: GameEvent[] = []
   const updated = monsters.map(monster => {
@@ -29,8 +26,8 @@ export function processNestEstablishment(
       // Nest newly established - deduct cost
       return {
         ...monster,
-        carryingNutrient: monster.carryingNutrient - NEST_NUTRIENT_COST,
-        life: monster.life - NEST_LIFE_COST,
+        carryingNutrient: monster.carryingNutrient - config.monsters.lizardman.nestNutrientCost!,
+        life: monster.life - config.monsters.lizardman.nestLifeCost!,
       }
     }
     return monster
@@ -43,7 +40,8 @@ export function processNestEstablishment(
  */
 export function processNutrientInteractions(
   monsters: Monster[],
-  grid: Cell[][]
+  grid: Cell[][],
+  config: GameConfig
 ): { monsters: Monster[]; grid: Cell[][]; events: GameEvent[] } {
   const events: GameEvent[] = []
   let currentGrid = grid
@@ -56,7 +54,7 @@ export function processNutrientInteractions(
     }
 
     // Try to absorb first
-    const absorbResult = absorbNutrient(monster, currentGrid)
+    const absorbResult = absorbNutrient(monster, currentGrid, config)
     if (absorbResult.monster.carryingNutrient > monster.carryingNutrient) {
       // Successfully absorbed
       const absorbed = absorbResult.monster.carryingNutrient - monster.carryingNutrient
@@ -72,7 +70,7 @@ export function processNutrientInteractions(
     }
 
     // Try to release if not absorbed
-    const releaseResult = releaseNutrient(monster, currentGrid)
+    const releaseResult = releaseNutrient(monster, currentGrid, config)
     if (releaseResult.monster.carryingNutrient < monster.carryingNutrient) {
       // Successfully released
       const released = monster.carryingNutrient - releaseResult.monster.carryingNutrient
@@ -100,7 +98,8 @@ export function processNutrientInteractions(
 export function decreaseLifeForMoved(
   monsters: Monster[],
   originalPositions: Map<string, Position>,
-  grid: Cell[][]
+  grid: Cell[][],
+  config: GameConfig
 ): { monsters: Monster[]; grid: Cell[][]; events: GameEvent[] } {
   const events: GameEvent[] = []
   let currentGrid = grid
@@ -127,7 +126,7 @@ export function decreaseLifeForMoved(
         )
         return { ...monster, carryingNutrient: monster.carryingNutrient - 1 }
       }
-      const newLife = monster.life - MOVEMENT_LIFE_COST
+      const newLife = monster.life - config.movement.lifeCost
       if (newLife <= 0) {
         events.push({ type: 'MONSTER_DIED', monster, cause: 'starvation' })
         // Release nutrients on death

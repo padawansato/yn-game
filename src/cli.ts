@@ -30,7 +30,7 @@ function parseSeedArg(): number {
 
 function createDefaultState(): GameState {
   const base = createGameState(10, 8, 1.0)
-  const { grid } = initializeNutrients(base.grid, 200)
+  const { grid } = initializeNutrients(base.grid, 200, base.config)
   return { ...base, grid, totalInitialNutrients: 200 }
 }
 
