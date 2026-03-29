@@ -516,6 +516,38 @@ describe('Integration Tests', () => {
       expect(getTotalNutrients(state)).toBe(initialNutrients)
     })
 
+    it('nijirigoke should not bud before minMobileTicks after dig', () => {
+      const grid = createGrid(10, 10, 'soil')
+      for (let x = 2; x <= 7; x++) grid[5][x] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }
+      for (let x = 2; x <= 7; x++) {
+        if (grid[4][x].type === 'soil') grid[4][x].nutrientAmount = 5
+        grid[6][x].nutrientAmount = 5
+      }
+      grid[4][3] = { type: 'soil', nutrientAmount: 9, magicAmount: 0 }
+
+      let state = createGameState({ grid, monsters: [] })
+      const randomFn = createSeededRandom(42)
+
+      const digResult = dig(state, { x: 3, y: 4 }, randomFn)
+      if ('error' in digResult) throw new Error('Dig failed')
+      state = digResult.state
+
+      const minMobileTicks = state.config.monsters.nijirigoke.minMobileTicks!
+
+      // Run ticks and verify no bud before minMobileTicks
+      for (let i = 0; i < minMobileTicks + 5; i++) {
+        const m = state.monsters.find(m => m.type === 'nijirigoke')
+        if (m && i < minMobileTicks) {
+          expect(m.phase).toBe('mobile')
+        }
+        state = tick(state, randomFn).state
+      }
+
+      // After minMobileTicks, bud should have been reached
+      const nijiAfter = state.monsters.find(m => m.type === 'nijirigoke')
+      expect(nijiAfter?.phase === 'bud' || nijiAfter?.phase === 'flower').toBe(true)
+    })
+
     it('gajigajimushi should gain nutrients from predation (nutrient transfer)', () => {
       const grid = createGrid(5, 5, 'empty')
 
