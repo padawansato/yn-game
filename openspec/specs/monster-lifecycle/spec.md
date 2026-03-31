@@ -26,11 +26,19 @@ Each monster SHALL have a phase field representing its current lifecycle stage. 
 - **THEN** it SHALL be in its initial phase: Nijirigoke='mobile', Gajigajimushi='larva', Lizardman='normal'
 
 ### Requirement: Nijirigoke lifecycle - bud transition
-A Nijirigoke SHALL transition from 'mobile' to 'bud' when it has accumulated sufficient nutrients (nutrient-only trigger, no life condition).
+A Nijirigoke SHALL transition from 'mobile' to 'bud' when it has accumulated sufficient nutrients AND has been in mobile phase for a minimum number of ticks.
 
 #### Scenario: Bud transition condition
-- **WHEN** a Nijirigoke has carryingNutrient >= BUD_NUTRIENT_THRESHOLD (4)
+- **WHEN** a Nijirigoke has carryingNutrient >= BUD_NUTRIENT_THRESHOLD (4) AND phaseTickCounter >= minMobileTicks (default: 8)
 - **THEN** it SHALL transition to 'bud' phase
+
+#### Scenario: No bud transition before minimum ticks
+- **WHEN** a Nijirigoke has carryingNutrient >= BUD_NUTRIENT_THRESHOLD (4) AND phaseTickCounter < minMobileTicks
+- **THEN** it SHALL NOT transition to 'bud' phase and SHALL remain in 'mobile' phase
+
+#### Scenario: Mobile phase tick counter
+- **WHEN** a Nijirigoke is in 'mobile' phase during a tick
+- **THEN** its phaseTickCounter SHALL increment by 1
 
 #### Scenario: Bud immobility
 - **WHEN** a Nijirigoke is in 'bud' phase
