@@ -35,6 +35,7 @@ services:
       - .:/app
     environment:
       - CI=true
+      - DOCKER=true
     command: sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm exec playwright test --reporter=list"
     depends_on:
       - app

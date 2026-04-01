@@ -32,3 +32,22 @@ jobs:
 
       - name: Type check
         run: pnpm exec vue-tsc -b
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --no-frozen-lockfile
+
+      - run: pnpm exec playwright install --with-deps chromium
+
+      - name: E2E tests
+        run: pnpm e2e
