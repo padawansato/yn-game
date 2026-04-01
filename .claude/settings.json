@@ -8,6 +8,14 @@
           "command": "sh -c 'echo \"$CLAUDE_FILE_PATHS\" | grep -qE \"\\.env(\\..*)?$\" && echo \"BLOCK: .env files should not be edited by Claude. Please edit manually.\" && exit 1 || exit 0'",
           "timeout": 5000
         }]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [{
+          "type": "command",
+          "command": ".claude/hooks/check-diagram-sync.sh",
+          "timeout": 5000
+        }]
       }
     ],
     "PostToolUse": [
