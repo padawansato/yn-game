@@ -1080,13 +1080,37 @@ describe('Simulation', () => {
         expect(result.monsters[0].life).toBe(0)
       })
 
-      it('should reproduce in withered phase and distribute nutrients', () => {
+      it('should NOT reproduce in withered phase before minWitheredTicks', () => {
         const grid = createGrid(5, 5, 'empty')
         const monster = createMonster({
           id: 'm1',
           type: 'nijirigoke',
           position: { x: 2, y: 2 },
           phase: 'withered',
+          phaseTickCounter: 0, // below minWitheredTicks
+          life: 0,
+          carryingNutrient: 10,
+        })
+        const state = createGameState({ grid, monsters: [monster] })
+
+        const result = processPhaseTransitions(state)
+
+        // Parent should still be alive (not reproduced yet)
+        const parents = result.monsters.filter((m) => m.id === 'm1')
+        expect(parents).toHaveLength(1)
+        expect(parents[0].phase).toBe('withered')
+        expect(parents[0].phaseTickCounter).toBe(1) // incremented
+      })
+
+      it('should reproduce in withered phase after minWitheredTicks', () => {
+        const grid = createGrid(5, 5, 'empty')
+        const minWitheredTicks = 3 // default
+        const monster = createMonster({
+          id: 'm1',
+          type: 'nijirigoke',
+          position: { x: 2, y: 2 },
+          phase: 'withered',
+          phaseTickCounter: minWitheredTicks, // >= minWitheredTicks
           life: 0,
           carryingNutrient: 10,
         })
@@ -1218,7 +1242,7 @@ describe('Simulation', () => {
           id: 'niji-1',
           position: { x: 2, y: 2 },
           phase: 'withered',
-          phaseTickCounter: 0,
+          phaseTickCounter: 3, // >= minWitheredTicks
           carryingNutrient: 3,
           life: 0,
         })
@@ -1226,7 +1250,7 @@ describe('Simulation', () => {
           id: 'niji-2',
           position: { x: 6, y: 6 },
           phase: 'withered',
-          phaseTickCounter: 0,
+          phaseTickCounter: 3, // >= minWitheredTicks
           carryingNutrient: 3,
           life: 0,
         })
@@ -1249,7 +1273,7 @@ describe('Simulation', () => {
           id: 'niji-1',
           position: { x: 5, y: 5 },
           phase: 'withered',
-          phaseTickCounter: 0,
+          phaseTickCounter: 3, // >= minWitheredTicks
           carryingNutrient: 8,
           life: 0,
         })

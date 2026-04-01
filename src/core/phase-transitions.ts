@@ -227,7 +227,16 @@ function processNijirigokePhase(
     return { monster: { ...monster, life: newLife }, grid }
   }
 
-  // withered: reproduce (spawn up to 5 offspring, distribute nutrients evenly)
+  // withered: wait minWitheredTicks, then reproduce
+  if (phase === 'withered') {
+    const minWitheredTicks = nijiConfig.minWitheredTicks ?? 0
+    const updatedCounter = monster.phaseTickCounter + 1
+
+    if (updatedCounter < minWitheredTicks) {
+      return { monster: { ...monster, phaseTickCounter: updatedCounter }, grid }
+    }
+  }
+
   if (phase === 'withered' && monster.carryingNutrient > 0) {
     const maxOffspring = 5
     const surroundingCells = getSurroundingCells(monster.position, grid)
