@@ -46,7 +46,7 @@ test.describe('Nijirigoke Scenario E2E Tests', () => {
     expect(phaseTickCounts.mobile, 'mobile phase should last more than 1 tick').toBeGreaterThan(1)
     expect(phaseTickCounts.bud, 'bud phase should last more than 1 tick').toBeGreaterThan(1)
     expect(phaseTickCounts.flower, 'flower phase should last more than 1 tick').toBeGreaterThan(1)
-    expect(phaseTickCounts.withered, 'withered phase should be observed').toBeGreaterThanOrEqual(1)
+    expect(phaseTickCounts.withered, 'withered phase should last more than 1 tick').toBeGreaterThan(1)
   })
 
   test('Full phase progression: mobile → bud → flower → withered', async () => {

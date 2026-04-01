@@ -44,6 +44,7 @@ export interface MonsterTypeConfig {
   budNutrientThreshold?: number
   budLifeThreshold?: number
   minMobileTicks?: number
+  minWitheredTicks?: number
   flowerNutrientThreshold?: number
   moyomoyoDamage?: number
   // Gajigajimushi lifecycle
@@ -113,6 +114,7 @@ export function createDefaultConfig(): GameConfig {
         budNutrientThreshold: BUD_NUTRIENT_THRESHOLD,
         budLifeThreshold: BUD_LIFE_THRESHOLD,
         minMobileTicks: 8,
+        minWitheredTicks: 3,
         flowerNutrientThreshold: FLOWER_NUTRIENT_THRESHOLD,
         moyomoyoDamage: MOYOMOYO_DAMAGE,
       },
