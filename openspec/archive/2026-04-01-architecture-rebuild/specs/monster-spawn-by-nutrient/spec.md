@@ -11,6 +11,10 @@ The system SHALL spawn different monster types based on the soil's nutrient amou
 - **WHEN** using default config
 - **THEN** nutrient 1-9 SHALL spawn nijirigoke, 10-16 SHALL spawn gajigajimushi, 17+ SHALL spawn lizardman
 
+#### Scenario: Fallback to nijirigoke when no threshold matches
+- **WHEN** the nutrient amount does not meet any threshold in spawn.thresholds
+- **THEN** the system SHALL spawn nijirigoke as the default monster type
+
 #### Scenario: Custom spawn thresholds
 - **WHEN** a user configures custom spawn.thresholds (e.g., adding a new monster type at threshold 25)
 - **THEN** the system SHALL use the custom thresholds for determining spawn type
