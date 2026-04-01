@@ -8,11 +8,16 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
-    // Use Docker service name when running in container, localhost otherwise
-    baseURL: process.env.CI ? 'http://app:5173' : 'http://localhost:5173',
+    // Docker container uses service name 'app', otherwise localhost
+    baseURL: process.env.DOCKER ? 'http://app:5173' : 'http://localhost:5173',
     trace: 'on-first-retry',
     headless: true,
     ignoreHTTPSErrors: true,
+  },
+  webServer: {
+    command: 'pnpm dev',
+    port: 5173,
+    reuseExistingServer: !process.env.CI,
   },
   projects: [
     {
