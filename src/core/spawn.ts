@@ -72,7 +72,9 @@ export function createGameState(
     grid.push(row)
   }
 
-  // Entrance stays as wall (monsters can't enter, heroes spawn directly)
+  // Make entrance cell empty (heroes spawn here, spec requires it to be empty)
+  grid[entrancePosition.y][entrancePosition.x] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }
+
   if (demonLordPosition) {
     grid[demonLordPosition.y][demonLordPosition.x] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }
   }
