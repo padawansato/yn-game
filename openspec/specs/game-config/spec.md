@@ -1,4 +1,10 @@
-## ADDED Requirements
+# Game Config
+
+## Purpose
+
+全ゲームパラメータを単一のシリアライズ可能なオブジェクト（GameConfig）に集約し、実行時の差し替え・エクスポート/インポートを可能にする。
+
+## Requirements
 
 ### Requirement: GameConfig type definition
 The system SHALL define a `GameConfig` type that contains all game parameters as a single serializable object.
@@ -26,6 +32,7 @@ The system SHALL define a `GameConfig` type that contains all game parameters as
 #### Scenario: GameConfig contains monster definitions
 - **WHEN** a GameConfig is created
 - **THEN** it SHALL include monsters as a Record<string, MonsterTypeConfig> where each entry defines type, pattern, life, attack, predationTargets, canCarryNutrients, and phase transition thresholds
+- **AND** MonsterTypeConfig SHALL support lifecycle timing parameters: minMobileTicks (minimum ticks in mobile phase before bud transition), minWitheredTicks (minimum ticks in withered phase before reproduction)
 
 #### Scenario: GameConfig contains hero settings
 - **WHEN** a GameConfig is created

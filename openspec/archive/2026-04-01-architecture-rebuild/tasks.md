@@ -36,34 +36,14 @@
 - [x] 4.9 constants.tsのexportを削除（createDefaultConfig内部のみに）
 - [x] 4.10 全テスト通過を確認
 
-## 5. Config編集UI
+## 5. Config編集UI (FUTURE)
 
-- [ ] 5.1 App.vueにconfig編集パネルを追加（モンスターパラメータ編集）
-- [ ] 5.2 ゲーム設定（grid, nutrient, dig, hero）の編集UIを追加
-- [ ] 5.3 バリデーションエラー表示を実装
-- [ ] 5.4 localStorageプリセット保存/読み込み/削除を実装
-- [ ] 5.5 JSON export（テキスト表示+コピー）を実装
-- [ ] 5.6 JSON import（テキスト貼り付け+バリデーション+読み込み）を実装
-- [ ] 5.7 ブラウザで動作確認
+> 別changeで実装予定。delta specは openspec/specs/future/ に退避済み。
 
-## 6. 非同期対戦
+## 6. 非同期対戦 (FUTURE)
 
-- [ ] 6.1 スコア計算を実装（gameTimeベース）
-- [ ] 6.2 ゲームオーバー時のスコア表示UIを追加
-- [ ] 6.3 Battle dataエクスポートを実装（config + score + seed のJSON）
-- [ ] 6.4 Battle dataインポート（チャレンジモード）を実装
-- [ ] 6.5 スコア比較表示（元スコア vs 自分のスコア）を実装
-- [ ] 6.6 ブラウザで動作確認
+> 別changeで実装予定。delta specは openspec/specs/future/ に退避済み。
 
-## 7. LLM勇者AI
+## 7. LLM勇者AI (FUTURE)
 
-- [ ] 7.1 HeroAIStrategy interfaceを定義
-- [ ] 7.2 RuleBasedAIクラスを実装（既存calculateHeroMoveをラップ）
-- [ ] 7.3 tick.tsのhero処理をstrategy経由に変更
-- [ ] 7.4 GameConfigにhero.aiTypeフィールドを追加
-- [ ] 7.5 GameStateをプロンプトに変換する関数を実装
-- [ ] 7.6 LlmAIクラスを実装（API呼び出し+レスポンスパース）
-- [ ] 7.7 API失敗時のrule-basedフォールバックを実装
-- [ ] 7.8 APIキー入力UIを追加（localStorage保存）
-- [ ] 7.9 テスト: RuleBasedAI動作等価性、フォールバック動作
-- [ ] 7.10 ブラウザで動作確認
+> 別changeで実装予定。delta specは openspec/specs/future/ に退避済み。

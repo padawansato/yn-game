@@ -22,6 +22,14 @@ The game SHALL track elapsed game time in ticks.
 - **WHEN** a new game state is created
 - **THEN** gameTime SHALL be initialized to 0
 
+### Requirement: GameState contains config
+GameState SHALL contain a config field holding all game parameters.
+
+#### Scenario: GameState contains config
+- **WHEN** a new GameState is created
+- **THEN** it SHALL contain a config field of type GameConfig
+- **AND** all game functions SHALL read parameters from state.config instead of importing constants directly
+
 ### Requirement: Game loop control
 The game loop SHALL support start, stop, pause, and resume operations.
 
