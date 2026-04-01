@@ -905,11 +905,11 @@ describe('Simulation', () => {
       expect(state.heroSpawnConfig.heroesSpawned).toBe(0)
     })
 
-    it('should ensure entrance cell is wall (monsters cannot enter)', () => {
+    it('should ensure entrance cell is empty (heroes spawn here)', () => {
       const state = createInitialGameState(20, 15)
 
       const entranceCell = state.grid[state.entrancePosition.y][state.entrancePosition.x]
-      expect(entranceCell.type).toBe('wall')
+      expect(entranceCell.type).toBe('empty')
     })
 
     it('should not place demon lord by default', () => {
