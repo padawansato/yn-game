@@ -1,4 +1,4 @@
-<!-- Based on: v0.4.2 -->
+<!-- Based on: v0.4.3 -->
 # 養分フロー
 
 ## 養分循環の全体像
@@ -18,8 +18,8 @@ flowchart TD
     SOIL -->|"掘る（N > 0）"| DIG
     DIG -->|"モンスター生成\nlife = min(N, maxLife)\n余剰 = carryingNutrient"| MONSTER
     MONSTER -->|"捕食される"| PREDATION
-    PREDATION -->|"養分が捕食者へ移転"| MONSTER
-    MONSTER -->|"life ≤ 0"| DEATH
+    PREDATION -->|"養分が捕食者へ直接移転\n（グリッドに放出しない）"| MONSTER
+    MONSTER -->|"life ≤ 0\n（捕食以外の死亡）"| DEATH
     DEATH -->|"carryingNutrient\n9セルに均等分配"| CELLS
     CELLS -->|"土壌セルに蓄積"| SOIL
     SOIL -->|"隣接ニジリゴケが吸収"| ABSORB

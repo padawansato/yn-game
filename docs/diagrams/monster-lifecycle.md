@@ -1,4 +1,4 @@
-<!-- Based on: v0.4.2 -->
+<!-- Based on: v0.4.3 -->
 # モンスターライフサイクル
 
 ## ニジリゴケ（Nijirigoke）
@@ -96,12 +96,9 @@ stateDiagram-v2
 
     normal --> nesting: 巣を発見/構築
     nesting --> laying: 巣内 AND carryingNutrient ≥ LAYING_THRESHOLD\nAND life ≥ LAYING_LIFE_THRESHOLD
-    laying --> egg_created: LAYING_DURATION ticks経過
-    egg_created --> nesting: 親は通常に復帰
+    laying --> nesting: LAYING_DURATION ticks経過\n親はnestingに復帰
+    laying -.-> egg: 卵エンティティを別途生成
 
-    state egg_phase <<fork>>
-    egg_created --> egg_phase
-    egg_phase --> egg: 卵エンティティ生成
     egg --> hatched: EGG_HATCH_DURATION ticks経過
     hatched --> [*]: 新しいLizardman(normal)
 
