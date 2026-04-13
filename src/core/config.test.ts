@@ -9,6 +9,7 @@ import {
   MOVEMENT_LIFE_COST,
   DEFAULT_GRID_WIDTH,
   DEFAULT_GRID_HEIGHT,
+  GRID_PRESETS,
   MAX_NUTRIENT_PER_CELL,
   NUTRIENT_SPAWN_THRESHOLDS,
   INITIAL_DIG_POWER,
@@ -42,6 +43,12 @@ describe('GameConfig', () => {
       expect(config.grid.defaultWidth).toBe(DEFAULT_GRID_WIDTH)
       expect(config.grid.defaultHeight).toBe(DEFAULT_GRID_HEIGHT)
       expect(config.grid.maxNutrientPerCell).toBe(MAX_NUTRIENT_PER_CELL)
+    })
+
+    it('should derive grid defaults from GRID_PRESETS.small', () => {
+      const config = createDefaultConfig()
+      expect(config.grid.defaultWidth).toBe(GRID_PRESETS.small.width)
+      expect(config.grid.defaultHeight).toBe(GRID_PRESETS.small.height)
     })
 
     it('should match constants.ts nutrient values', () => {
