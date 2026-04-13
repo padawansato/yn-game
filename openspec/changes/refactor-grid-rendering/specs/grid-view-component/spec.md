@@ -73,25 +73,30 @@ GridView SHALL correctly render grids of any dimensions determined by `gameState
 - **AND** the cell content and classes SHALL reflect the cell state at each coordinate
 - **AND** no assertion SHALL rely on fixed coordinate values that are only valid at one size
 
-### Requirement: Grid size SSoT via GameConfig
+### Requirement: No hardcoded grid dimensions in GridView
 
-The system SHALL NOT hardcode grid dimensions in `src/App.vue` or in UI scenario setup functions. All grid sizes used by the UI SHALL be derived from `GameConfig.grid.defaultWidth` and `GameConfig.grid.defaultHeight`, either directly or via a spread override of the base config.
+`GridView.vue` SHALL NOT contain any hardcoded grid width or height value. All dimensions SHALL be derived from the `gameState.grid` prop. Preset catalog, default selection, and runtime switching are out of scope for this component and are handled by the `grid-size-preset` capability.
 
-#### Scenario: Initial game state uses GameConfig
+#### Scenario: GridView source contains no dimension literals
 
-- **WHEN** `App.vue` initializes the game state on startup
-- **THEN** it SHALL call `createGameState` using `config.grid.defaultWidth` and `config.grid.defaultHeight` rather than literal numbers
-- **AND** `config` SHALL be obtained from `createDefaultConfig()`
+- **WHEN** `src/components/GridView.vue` is examined
+- **THEN** it SHALL NOT contain numeric literals that represent grid width or height (e.g., `10`, `8`, `20`, `15` as dimension values)
+- **AND** iteration over rows SHALL use `gameState.grid.length` for height
+- **AND** iteration over columns SHALL use `gameState.grid[y].length` for width
 
-#### Scenario: UI scenario uses spread override
+#### Scenario: GridView adapts to any grid size via props
 
-- **WHEN** a UI scenario setup function needs a grid of a size different from the base config
-- **THEN** it SHALL construct a scenario-specific config as `{ ...baseConfig, grid: { ...baseConfig.grid, defaultWidth: N, defaultHeight: M } }` and use that config to create the scenario game state
-- **AND** it SHALL NOT call `makeEmptyArena` (or any equivalent helper) with hardcoded literal dimensions
+- **WHEN** `GridView` receives `gameState` with a grid of size 5×5, 10×8, 20×15, or 30×40
+- **THEN** the rendered DOM SHALL reflect the actual `gameState.grid` dimensions in each case
+- **AND** no conditional logic SHALL branch on specific sizes
 
-#### Scenario: constants.ts values flow through
+### Requirement: UI scenarios use spread override for grid size
 
-- **WHEN** `createDefaultConfig()` is called
-- **THEN** the returned config's `grid.defaultWidth` SHALL equal `DEFAULT_GRID_WIDTH` from `src/core/constants.ts`
-- **AND** the returned config's `grid.defaultHeight` SHALL equal `DEFAULT_GRID_HEIGHT` from `src/core/constants.ts`
-- **AND** the `App.vue` initial render SHALL use those values, resulting in a 20×15 grid by default
+UI scenario setup functions SHALL NOT call `makeEmptyArena` with hardcoded literal dimensions. When a scenario needs a grid size different from the current base config, it SHALL construct a scenario-specific config via spread override and derive dimensions from that config.
+
+#### Scenario: Scenario constructs config via spread override
+
+- **WHEN** a scenario setup function needs a grid of different size
+- **THEN** it SHALL build a scenario config as `{ ...baseConfig, grid: { ...baseConfig.grid, defaultWidth: N, defaultHeight: M } }`
+- **AND** SHALL pass that config's dimensions to `makeEmptyArena` / `createGameState`
+- **AND** SHALL NOT pass literal numbers directly to those functions
