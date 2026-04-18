@@ -107,8 +107,8 @@ describe('GridView (skeleton)', () => {
 describe.each([
   { name: 'tiny 5x5', width: 5, height: 5 },
   { name: 'small 10x8', width: 10, height: 8 },
-  { name: 'large 20x15', width: 20, height: 15 },
-  { name: 'huge 30x40', width: 30, height: 40 },
+  { name: 'arbitrary 20x15', width: 20, height: 15 },
+  { name: 'large 30x40', width: 30, height: 40 },
 ])('GridView at $name', ({ width, height }) => {
   function makeStateAtSize() {
     const config = createDefaultConfig()

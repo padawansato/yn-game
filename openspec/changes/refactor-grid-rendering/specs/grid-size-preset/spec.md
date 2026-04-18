@@ -9,7 +9,7 @@ The system SHALL define a catalog of named grid size presets in `src/core/consta
 - **WHEN** `GRID_PRESETS` is examined
 - **THEN** it SHALL contain at least the following presets:
   - `small` with `width` 10 and `height` 8
-  - `large` with `width` 20 and `height` 15
+  - `large` with `width` 30 and `height` 40
 
 #### Scenario: Preset values are positive integers
 
@@ -45,7 +45,7 @@ The UI SHALL provide buttons that allow the user to switch the active grid size 
 
 - **WHEN** `App.vue` is mounted
 - **THEN** the rendered output SHALL contain one button per preset defined in `GRID_PRESETS`
-- **AND** each button SHALL display a label that includes both the preset name and its dimensions (e.g., `小 10×8`, `大 20×15`)
+- **AND** each button SHALL display a label that includes both the preset name and its dimensions (e.g., `小 10×8`, `大 30×40`)
 
 #### Scenario: Preset selection resets the game
 
@@ -74,7 +74,7 @@ Scenarios SHALL continue to use their own fixed grid sizes (applied via spread o
 #### Scenario: Scenario uses its own size regardless of preset
 
 - **WHEN** the user selects the `large` preset, then clicks a scenario button (e.g., リザードマン産卵)
-- **THEN** the scenario SHALL initialize with its own grid size (12×10), not 20×15
+- **THEN** the scenario SHALL initialize with its own grid size (12×10), not 30×40
 
 #### Scenario: Reset returns to selected preset
 

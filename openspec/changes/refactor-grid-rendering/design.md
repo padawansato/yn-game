@@ -15,7 +15,7 @@
 1. グリッドサイズが 3 箇所でハードコードされている (`App.vue:23` の 10×8、シナリオ 4 本の 12×10、`constants.ts` の 20×15)
 2. `GameConfig.grid.defaultWidth/Height` が型・spec で定義済みにもかかわらず、実装が完全に無視している
 3. `getCellClass`, `getCellDisplay` 等の UI ロジックがテスト完全未整備
-4. ゲームバランスがステージサイズに依存する（`initializeNutrients` は soil セル全体に `totalNutrients` を分配するため、セル数が増えると 1 セル当たりの養分が薄くなる。20×15 では既存の `totalNutrients=200` で平均 0.85/セルとなり、モンスターがほぼスポーンしないゲームになる）
+4. ゲームバランスがステージサイズに依存する（`initializeNutrients` は soil セル全体に `totalNutrients` を分配するため、セル数が増えると 1 セル当たりの養分が薄くなる。20×15 では既存の `totalNutrients=200` で平均 0.85/セルとなり、モンスターがほぼスポーンしないゲームになる。本 change で採用する `large = 30×40` ではさらに薄まり、モンスター早期死亡が顕著化する想定。バランス調整は後続 change で対応）
 
 本 change ではグリッド描画を `GridView.vue` コンポーネントに抽出し、SSoT 化を行う。加えて、ゲームバランス調整は時間のかかる反復作業のため、**複数のグリッドサイズ preset（small / large）を実行時に切り替え可能にして、プレイしながら調整できる状態を作る**。デフォルト起動は `small` とし、既存のプレイ体験・E2E・ゲームバランスを完全維持する。
 
@@ -31,8 +31,7 @@
 
 ## Non-Goals
 
-- ゆうなま相当のステージサイズ（30×40 等）の `huge` preset 追加（M2 のスコープ）
-- カメラ / スクロール / ズーム対応（M2 のスコープ）
+- カメラ / スクロール / ズーム対応（M2 のスコープ。本 change では `large = 30×40` を採用するが、操作性改善はページスクロール任せの暫定状態とする）
 - 縦長ステージ特有の仕様（深さ・層・養分分布変化）（M3 のスコープ）
 - 内側壁方式での擬似小ステージ（Issue #50、M3 タイミング）
 - `src/cli/scenarios.ts` の SSoT 化（Issue #49、別 change）
@@ -70,7 +69,7 @@ App.vue                         (リファクタ後)
 │   └── ...
 ├── Template
 │   ├── controls (Tick / Start / Pause / Resume / Stop / Reset / 勇者呼ぶ)
-│   ├── preset buttons (新規: 小 10×8 / 大 20×15)     ← サイズ選択 UI
+│   ├── preset buttons (新規: 小 10×8 / 大 30×40)     ← サイズ選択 UI
 │   ├── scenario buttons (既存)
 │   ├── status / banners
 │   ├── <GridView :gameState :config @cell-click="handleCellClick" />
@@ -79,7 +78,7 @@ App.vue                         (リファクタ後)
 src/core/constants.ts           (リファクタ)
 └── GRID_PRESETS = {
       small: { width: 10, height: 8 },
-      large: { width: 20, height: 15 },
+      large: { width: 30, height: 40 },
     } as const
 
 src/core/config.ts              (リファクタ)
@@ -105,7 +104,7 @@ src/core/config.ts              (リファクタ)
 ## Data Flow
 
 ```
-User clicks "大 20×15"
+User clicks "大 30×40"
         ↓
 App.vue.selectPreset('large')
         ↓
@@ -119,7 +118,7 @@ Vue reactivity triggers re-render
         ↓
 GridView receives new gameState + config via props
         ↓
-Template re-renders with 20×15 grid
+Template re-renders with 30×40 grid
 
 --------
 
@@ -169,7 +168,7 @@ App.vue.handleCellClick({ x, y })
 **`src/core/constants.test.ts`**（既存）に追記:
 
 - `GRID_PRESETS.small.width === 10 && .height === 8`
-- `GRID_PRESETS.large.width === 20 && .height === 15`
+- `GRID_PRESETS.large.width === 30 && .height === 40`
 - preset の値が正の整数であること
 
 **`src/core/config.test.ts`**（既存）に追記:
@@ -188,7 +187,7 @@ App.vue.handleCellClick({ x, y })
 `docker compose up` でブラウザから以下を確認:
 
 - small で起動（10×8 で表示される、既存と同じ）
-- large ボタンをクリック → 20×15 でリセット、遊べる
+- large ボタンをクリック → 30×40 でリセット、遊べる
 - small ボタンをクリック → 10×8 に戻る
 - シナリオ切替（preset に関係なく 12×10 で起動）
 - dig / 魔王配置 / 勇者呼び出し / tick / pause / resume / stop / reset
@@ -209,6 +208,6 @@ App.vue.handleCellClick({ x, y })
 
 - Issue #49: `src/cli/scenarios.ts` の SSoT 統一（別 change）
 - Issue #50: 内側壁方式での擬似小ステージ（M3 タイミング）
-- M2 で `huge` preset 追加（30×40 等）+ カメラ / スクロール対応
+- M2 で `large = 30×40` の操作性改善（cell 縮小 / カメラ追従 / ズーム / ページスクロール脱却）
 - M2 以降で large preset のゲームバランス調整（totalNutrients 相対化、高養分土配置の入口相対化、勇者定数見直し）
 - `App.vue` のさらなる責務分離（GameLoop / controls / scenarios 等の抽出）は本 change では行わない

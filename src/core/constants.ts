@@ -53,7 +53,7 @@ export const MOVEMENT_LIFE_COST = 1
 // Runtime-switchable via UI. Default startup uses `small`.
 export const GRID_PRESETS = {
   small: { width: 10, height: 8 },
-  large: { width: 20, height: 15 },
+  large: { width: 30, height: 40 },
 } as const
 
 export type GridPresetKey = keyof typeof GRID_PRESETS

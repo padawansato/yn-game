@@ -27,7 +27,7 @@
 ### サイズ選択 UI
 
 - 既存のシナリオボタンと同じスタイルで、グリッドサイズを実行時に切り替える UI を追加
-  - 表示例: `[小 10×8]` `[大 20×15]`
+  - 表示例: `[小 10×8]` `[大 30×40]`
 - クリックするとゲームループを停止し、選択された preset のサイズで新しい GameState を作ってリセットする
 - デフォルト起動サイズは **small (10×8)**。既存のプレイ体験・E2E・ゲームバランスを完全維持する
 - 現在選択中の preset は視覚的にマークされる
@@ -40,7 +40,7 @@
 
 ### スコープ外 (明示)
 
-- 大幅なサイズ拡大（ゆうなま相当の 30×40 等、huge preset 追加）は後続 change（M2: `viewport-camera-scroll`）のスコープ
+- 本 change で `large = 30×40`（原作 = ゆうなま相当）を採用する。viewport-camera-scroll などの操作性改善（cell 縮小やカメラスクロール）は後続 change（M2: `viewport-camera-scroll`）のスコープ。30×40 では現状のページスクロールで操作する暫定状態となる
 - **ゲームバランス調整（large サイズでの養分総量、勇者 spawn 定数等）は M1 では行わない**。プレイしながら後続 change で詰める
 - `src/cli/scenarios.ts` の SSoT 統一は Issue #49 で別途追跡
 - 内側壁方式の擬似小ステージ（Issue #50）は M3 で検討
@@ -76,13 +76,13 @@
   - `openspec/specs/game-config/spec.md` の `grid.defaultWidth/Height` の要件を、本 change で初めて実装が実際に参照するようになる（spec は変更なし）
 - **ユーザー視点の変化**
   - **デフォルト起動は従来通り small (10×8)** なので、既存プレイヤーの体験に変化はない
-  - **追加機能として「大 20×15」ボタン** が増える。ユーザーが選択するとゲームがその preset でリセットされて遊べる
+  - **追加機能として「大 30×40」ボタン**（原作 = ゆうなま相当）が増える。ユーザーが選択するとゲームがその preset でリセットされて遊べる
   - large 選択時のゲームバランスは未調整。「意図的に手を入れない」ことを本 change の明示的な方針とする
 - **ゲームバランス調整の方針**
   - M1 では調整を行わない。プレイしながら small と large を比較し、必要な調整（totalNutrients、高養分土配置、勇者 spawn 定数等）を別 change で実施する
 - **後続 change**
   - M2（`viewport-camera-scroll`）と M3（`vertical-stage-ecology`）は本 change の基盤（GridView、GameConfig 経由の SSoT、GRID_PRESETS）を前提として実装される
-  - M2 では huge preset（30×40 等）を追加してゆうなま相当のステージに拡大可能
+  - M2 では viewport-camera-scroll を追加して `large = 30×40` の操作性を改善（cell 縮小 / カメラ追従 / ページスクロール脱却）
 - **関連 issue**
   - Issue #47: ステージサイズ拡大（親 issue）
   - Issue #49: CLI scenarios SSoT 統一（本 change のスコープ外として追跡）

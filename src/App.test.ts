@@ -136,16 +136,16 @@ describe('App.vue (characterization before GridView extraction)', () => {
       })
     })
 
-    it('clicking large preset switches to 20x15', async () => {
+    it('clicking large preset switches to 30x40', async () => {
       const wrapper = mount(App)
       const presetButtons = wrapper.findAll('.preset-btn')
-      const largeBtn = presetButtons.find((b) => b.text().includes('20') && b.text().includes('15'))
+      const largeBtn = presetButtons.find((b) => b.text().includes('30') && b.text().includes('40'))
       expect(largeBtn).toBeDefined()
       await largeBtn!.trigger('click')
       const rows = wrapper.findAll('.grid .row')
-      expect(rows.length).toBe(15)
+      expect(rows.length).toBe(40)
       rows.forEach((row) => {
-        expect(row.findAll('.cell').length).toBe(20)
+        expect(row.findAll('.cell').length).toBe(30)
       })
     })
 
@@ -153,7 +153,7 @@ describe('App.vue (characterization before GridView extraction)', () => {
       const wrapper = mount(App)
       const presetButtons = wrapper.findAll('.preset-btn')
       const smallBtn = presetButtons.find((b) => b.text().includes('10') && b.text().includes('8'))
-      const largeBtn = presetButtons.find((b) => b.text().includes('20') && b.text().includes('15'))
+      const largeBtn = presetButtons.find((b) => b.text().includes('30') && b.text().includes('40'))
       await largeBtn!.trigger('click')
       expect(largeBtn!.classes()).toContain('active')
       expect(smallBtn!.classes()).not.toContain('active')
@@ -163,7 +163,7 @@ describe('App.vue (characterization before GridView extraction)', () => {
       const wrapper = mount(App)
       const presetButtons = wrapper.findAll('.preset-btn')
       const smallBtn = presetButtons.find((b) => b.text().includes('10') && b.text().includes('8'))
-      const largeBtn = presetButtons.find((b) => b.text().includes('20') && b.text().includes('15'))
+      const largeBtn = presetButtons.find((b) => b.text().includes('30') && b.text().includes('40'))
       await largeBtn!.trigger('click')
       await smallBtn!.trigger('click')
       const rows = wrapper.findAll('.grid .row')

@@ -66,7 +66,7 @@ describe('Constants', () => {
   describe('GRID_PRESETS', () => {
     it('should contain small and large presets', () => {
       expect(GRID_PRESETS.small).toEqual({ width: 10, height: 8 })
-      expect(GRID_PRESETS.large).toEqual({ width: 20, height: 15 })
+      expect(GRID_PRESETS.large).toEqual({ width: 30, height: 40 })
     })
 
     it('should have positive integer dimensions for all presets', () => {
