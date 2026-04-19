@@ -11,6 +11,7 @@ export default defineConfig({
     environmentMatchGlobs: [
       ['tests/**', 'jsdom'],
       ['src/**/*.vue.test.*', 'jsdom'],
+      ['src/components/**', 'jsdom'],
     ],
     coverage: {
       provider: 'v8',

@@ -8,6 +8,9 @@ import {
   HERO_SPAWN_INTERVAL,
   HERO_ANNOUNCE_TICKS,
   HERO_NUTRIENT_DROP,
+  GRID_PRESETS,
+  DEFAULT_GRID_WIDTH,
+  DEFAULT_GRID_HEIGHT,
 } from './constants'
 
 describe('Constants', () => {
@@ -57,6 +60,30 @@ describe('Constants', () => {
 
     it('should have hero nutrient drop', () => {
       expect(HERO_NUTRIENT_DROP).toBe(15)
+    })
+  })
+
+  describe('GRID_PRESETS', () => {
+    it('should contain small and large presets', () => {
+      expect(GRID_PRESETS.small).toEqual({ width: 10, height: 8 })
+      expect(GRID_PRESETS.large).toEqual({ width: 30, height: 40 })
+    })
+
+    it('should have positive integer dimensions for all presets', () => {
+      for (const [key, preset] of Object.entries(GRID_PRESETS)) {
+        expect(preset.width, `${key}.width`).toBeGreaterThan(0)
+        expect(preset.height, `${key}.height`).toBeGreaterThan(0)
+        expect(Number.isInteger(preset.width), `${key}.width is integer`).toBe(true)
+        expect(Number.isInteger(preset.height), `${key}.height is integer`).toBe(true)
+      }
+    })
+
+    it('DEFAULT_GRID_WIDTH should derive from small preset', () => {
+      expect(DEFAULT_GRID_WIDTH).toBe(GRID_PRESETS.small.width)
+    })
+
+    it('DEFAULT_GRID_HEIGHT should derive from small preset', () => {
+      expect(DEFAULT_GRID_HEIGHT).toBe(GRID_PRESETS.small.height)
     })
   })
 })

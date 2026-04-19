@@ -49,9 +49,18 @@ export const HUNGER_THRESHOLD_RATIO = 0.3
 // Life cost per movement
 export const MOVEMENT_LIFE_COST = 1
 
-// Grid dimensions (default)
-export const DEFAULT_GRID_WIDTH = 20
-export const DEFAULT_GRID_HEIGHT = 15
+// Grid size presets (SSoT for discrete grid dimensions)
+// Runtime-switchable via UI. Default startup uses `small`.
+export const GRID_PRESETS = {
+  small: { width: 10, height: 8 },
+  large: { width: 30, height: 40 },
+} as const
+
+export type GridPresetKey = keyof typeof GRID_PRESETS
+
+// Default grid dimensions (derived from the `small` preset to preserve existing behavior)
+export const DEFAULT_GRID_WIDTH = GRID_PRESETS.small.width
+export const DEFAULT_GRID_HEIGHT = GRID_PRESETS.small.height
 
 // Threshold of spawn monster
 export const NUTRIENT_SPAWN_THRESHOLDS = {

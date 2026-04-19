@@ -8,19 +8,37 @@ import {
   getTotalNutrients,
   GameLoop,
   createSeededRandom,
-  getNestCells,
   type GameState,
   type Cell,
   type Monster,
   type MonsterType,
 } from './core'
-import { createDefaultConfig } from './core/config'
+import { createDefaultConfig, type GameConfig } from './core/config'
+import { GRID_PRESETS, type GridPresetKey } from './core/constants'
+import GridView from './components/GridView.vue'
 
-const gameConfig = createDefaultConfig()
+function createConfigForPreset(key: GridPresetKey): GameConfig {
+  const base = createDefaultConfig()
+  return {
+    ...base,
+    grid: {
+      ...base.grid,
+      defaultWidth: GRID_PRESETS[key].width,
+      defaultHeight: GRID_PRESETS[key].height,
+    },
+  }
+}
+
+const activePresetKey = ref<GridPresetKey>('small')
+const gameConfig = ref<GameConfig>(createConfigForPreset(activePresetKey.value))
 
 // Initialize game
 function createInitialState(): GameState {
-  const state = createGameState(10, 8, 1.0)
+  const state = createGameState(
+    gameConfig.value.grid.defaultWidth,
+    gameConfig.value.grid.defaultHeight,
+    1.0,
+  )
   const totalNutrients = 200
   const { grid } = initializeNutrients(state.grid, totalNutrients, state.config)
 
@@ -52,7 +70,7 @@ function triggerHeroPhase() {
 
 function executeTickWithEvents() {
   // 制限時間到達 → 魔王配置フェーズへ
-  if (!heroesTriggered.value && gameState.value.gameTime >= gameConfig.hero.spawnStartTick) {
+  if (!heroesTriggered.value && gameState.value.gameTime >= gameConfig.value.hero.spawnStartTick) {
     triggerHeroPhase()
     return
   }
@@ -80,7 +98,8 @@ onUnmounted(() => {
 })
 
 // Actions
-function handleCellClick(x: number, y: number) {
+function handleCellClick(payload: { x: number; y: number }) {
+  const { x, y } = payload
   // Demon lord placement mode
   if (isPlacingDemonLord.value) {
     const cell = gameState.value.grid[y][x]
@@ -161,6 +180,23 @@ function handleReset() {
   initGameLoop()
 }
 
+function selectPreset(key: GridPresetKey) {
+  if (activePresetKey.value === key && !isRunning.value) {
+    // same preset, not running: still perform a reset so users get feedback
+    handleReset()
+    return
+  }
+  stopGame()
+  activePresetKey.value = key
+  gameConfig.value = createConfigForPreset(key)
+  seededRandom = null
+  gameState.value = createInitialState()
+  events.value = []
+  heroesTriggered.value = false
+  isPlacingDemonLord.value = false
+  initGameLoop()
+}
+
 // === デバッグシナリオ ===
 interface Scenario {
   name: string
@@ -174,15 +210,19 @@ const scenarios: Scenario[] = [
     description: '巣あり・養分/life十分 → laying → 卵 → 孵化',
     setup() {
       stopGame()
-      const grid = makeEmptyArena(12, 10)
+      const scenarioConfig = {
+        ...gameConfig.value,
+        grid: { ...gameConfig.value.grid, defaultWidth: 12, defaultHeight: 10 },
+      }
+      const grid = makeEmptyArena(scenarioConfig.grid.defaultWidth, scenarioConfig.grid.defaultHeight)
       const state = makeState(grid, [
         {
           type: 'lizardman',
           position: { x: 5, y: 4 },
           nestPosition: { x: 5, y: 4 },
           nestOrientation: 'horizontal' as const,
-          life: gameConfig.monsters.lizardman.layingLifeThreshold! + 20,
-          carryingNutrient: gameConfig.monsters.lizardman.layingNutrientThreshold! + 5,
+          life: gameConfig.value.monsters.lizardman.layingLifeThreshold! + 20,
+          carryingNutrient: gameConfig.value.monsters.lizardman.layingNutrientThreshold! + 5,
           phase: 'normal',
         },
       ])
@@ -194,7 +234,11 @@ const scenarios: Scenario[] = [
     description: '養分豊富 → bud → flower → withered → 繁殖',
     setup() {
       stopGame()
-      const grid = makeEmptyArena(12, 10)
+      const scenarioConfig = {
+        ...gameConfig.value,
+        grid: { ...gameConfig.value.grid, defaultWidth: 12, defaultHeight: 10 },
+      }
+      const grid = makeEmptyArena(scenarioConfig.grid.defaultWidth, scenarioConfig.grid.defaultHeight)
       // 周囲に養分付き土セルを配置（mobileは土からのみ吸収可能）
       grid[3][5] = { type: 'soil', nutrientAmount: 3, magicAmount: 0 }
       grid[5][5] = { type: 'soil', nutrientAmount: 3, magicAmount: 0 }
@@ -204,7 +248,7 @@ const scenarios: Scenario[] = [
         {
           type: 'nijirigoke',
           position: { x: 5, y: 4 },
-          life: gameConfig.monsters.nijirigoke.life,
+          life: gameConfig.value.monsters.nijirigoke.life,
           carryingNutrient: 0,
           phase: 'mobile',
         },
@@ -217,13 +261,17 @@ const scenarios: Scenario[] = [
     description: '養分あり → pupa → adult → 繁殖',
     setup() {
       stopGame()
-      const grid = makeEmptyArena(12, 10)
+      const scenarioConfig = {
+        ...gameConfig.value,
+        grid: { ...gameConfig.value.grid, defaultWidth: 12, defaultHeight: 10 },
+      }
+      const grid = makeEmptyArena(scenarioConfig.grid.defaultWidth, scenarioConfig.grid.defaultHeight)
       const state = makeState(grid, [
         {
           type: 'gajigajimushi',
           position: { x: 5, y: 4 },
           life: 25,
-          carryingNutrient: gameConfig.monsters.gajigajimushi.pupaNutrientThreshold! + 3,
+          carryingNutrient: gameConfig.value.monsters.gajigajimushi.pupaNutrientThreshold! + 3,
           phase: 'larva',
         },
       ])
@@ -235,7 +283,11 @@ const scenarios: Scenario[] = [
     description: 'リザードマン・ガジガジムシ・ニジリゴケが同エリアに',
     setup() {
       stopGame()
-      const grid = makeEmptyArena(12, 10)
+      const scenarioConfig = {
+        ...gameConfig.value,
+        grid: { ...gameConfig.value.grid, defaultWidth: 12, defaultHeight: 10 },
+      }
+      const grid = makeEmptyArena(scenarioConfig.grid.defaultWidth, scenarioConfig.grid.defaultHeight)
       const state = makeState(grid, [
         {
           type: 'lizardman',
@@ -304,7 +356,7 @@ function makeState(grid: Cell[][], monsterSetups: MonsterSetup[]): GameState {
   monsterIdCounter = 0
   const monsters: Monster[] = monsterSetups.map((s) => {
     monsterIdCounter++
-    const mConfig = gameConfig.monsters[s.type]
+    const mConfig = gameConfig.value.monsters[s.type]
     return {
       id: `monster-${monsterIdCounter}`,
       type: s.type,
@@ -340,7 +392,7 @@ function makeState(grid: Cell[][], monsterSetups: MonsterSetup[]): GameState {
     gameTime: 0,
     nextMonsterId: 0,
     ...heroDefaults,
-    config: gameConfig,
+    config: gameConfig.value,
   })
 
   return {
@@ -351,7 +403,7 @@ function makeState(grid: Cell[][], monsterSetups: MonsterSetup[]): GameState {
     gameTime: 0,
     nextMonsterId: monsterIdCounter,
     ...heroDefaults,
-    config: gameConfig,
+    config: gameConfig.value,
   }
 }
 
@@ -421,109 +473,6 @@ function formatEvent(e: { type: string; [key: string]: unknown }): string {
   }))
 })
 
-// Display helpers
-type EntityType = MonsterType
-
-const ENTITY_ICONS: Record<EntityType, string> = {
-  lizardman: '蜥',
-  gajigajimushi: '虫',
-  nijirigoke: '苔',
-}
-
-function getHeroesAtCell(x: number, y: number) {
-  return gameState.value.heroes.filter((h) => h.position.x === x && h.position.y === y && h.state !== 'dead')
-}
-
-function isDemonLordCell(x: number, y: number): boolean {
-  const pos = gameState.value.demonLordPosition
-  return pos !== null && pos.x === x && pos.y === y
-}
-
-function isEntranceCell(x: number, y: number): boolean {
-  const pos = gameState.value.entrancePosition
-  return pos.x === x && pos.y === y
-}
-
-function getCellDisplay(cell: Cell, x: number, y: number): string {
-  const heroes = getHeroesAtCell(x, y)
-  if (heroes.length > 0) {
-    return heroes[0].state === 'returning' ? '帰' : '勇'
-  }
-
-  const monsters = getMonstersAtCell(x, y)
-  const topMonster = getTopMonster(monsters)
-  if (topMonster) {
-    // ニジリゴケのフェーズ別アイコン
-    if (topMonster.type === 'nijirigoke') {
-      switch (topMonster.phase) {
-        case 'bud': return '蕾'
-        case 'flower': return '花'
-        case 'withered': return '枯'
-        default: return '苔'
-      }
-    }
-    return ENTITY_ICONS[topMonster.type]
-  }
-
-  if (isDemonLordCell(x, y)) return '魔'
-  if (isEntranceCell(x, y)) return '門'
-
-  switch (cell.type) {
-    case 'wall':
-      return '壁'
-    case 'soil':
-      return '土'
-    case 'empty':
-      return '　'
-  }
-}
-
-// 巣エリアのセル座標セット
-const nestCellSet = computed(() => {
-  const set = new Set<string>()
-  for (const m of gameState.value.monsters) {
-    if (m.type === 'lizardman' && m.nestPosition && m.nestOrientation) {
-      const cells = getNestCells(m.nestPosition, m.nestOrientation)
-      for (const c of cells) {
-        set.add(`${c.x},${c.y}`)
-      }
-    }
-  }
-  return set
-})
-
-function getCellClass(cell: Cell, x: number, y: number): string {
-  const heroes = getHeroesAtCell(x, y)
-  if (heroes.length > 0) {
-    return `cell hero-cell${heroes[0].state === 'returning' ? ' hero-returning' : ''}`
-  }
-
-  const monsters = getMonstersAtCell(x, y)
-  const topMonster = getTopMonster(monsters)
-  const isNest = nestCellSet.value.has(`${x},${y}`)
-
-  if (topMonster) {
-    // ニジリゴケのフェーズ別クラス
-    if (topMonster.type === 'nijirigoke' && topMonster.phase !== 'mobile') {
-      return `cell nijirigoke-${topMonster.phase}${isNest ? ' nest-cell' : ''}`
-    }
-    return `cell monster-${topMonster.type}${isNest ? ' nest-cell' : ''}`
-  }
-
-  if (isDemonLordCell(x, y)) return `cell demon-lord-cell`
-  if (isEntranceCell(x, y)) return `cell entrance-cell`
-
-  if (isNest) {
-    return `cell cell-${cell.type} nest-cell`
-  }
-
-  return `cell cell-${cell.type}`
-}
-
-function getOverlapCount(x: number, y: number): number {
-  return getMonstersAtCell(x, y).length + getHeroesAtCell(x, y).length
-}
-
 const totalNutrients = computed(() => getTotalNutrients(gameState.value))
 
 const monsterSummary = computed(() => {
@@ -540,32 +489,6 @@ const monsterSummary = computed(() => {
   return summary
 })
 
-// Monster helpers
-function getMonstersAtCell(x: number, y: number): Monster[] {
-  return gameState.value.monsters.filter((m) => m.position.x === x && m.position.y === y)
-}
-
-// Display priority: lower number = higher priority
-const DISPLAY_PRIORITY: Record<EntityType, number> = {
-  lizardman: 0,
-  gajigajimushi: 1,
-  nijirigoke: 2,
-}
-
-function getTopMonster(monsters: Monster[]): Monster | null {
-  if (monsters.length === 0) return null
-  return monsters.reduce((top, curr) =>
-    DISPLAY_PRIORITY[curr.type] < DISPLAY_PRIORITY[top.type] ? curr : top
-  )
-}
-
-// 養分レベルに応じたクラス名を返す
-function getNutrientLevel(amount: number): 'low' | 'mid' | 'high' | null {
-  if (amount <= 0) return null
-  if (amount >= 17) return 'high' // リザードマン
-  if (amount >= 10) return 'mid' // ガジガジムシ
-  return 'low' // ニジリゴケ
-}
 </script>
 
 <template>
@@ -620,6 +543,19 @@ function getNutrientLevel(amount: number): 'low' | 'mid' | 'high' | null {
       class="placement-banner"
     >
       魔王を配置してください — 空きセルをクリック
+    </div>
+
+    <div class="presets">
+      <strong>サイズ:</strong>
+      <button
+        v-for="(preset, key) in GRID_PRESETS"
+        :key="key"
+        class="preset-btn"
+        :class="{ active: activePresetKey === key }"
+        @click="selectPreset(key as GridPresetKey)"
+      >
+        {{ key === 'small' ? '小' : '大' }} {{ preset.width }}×{{ preset.height }}
+      </button>
     </div>
 
     <div class="scenarios">
@@ -681,57 +617,11 @@ function getNutrientLevel(amount: number): 'low' | 'mid' | 'high' | null {
       </div>
     </div>
 
-    <div class="grid">
-      <div
-        v-for="(row, y) in gameState.grid"
-        :key="y"
-        class="row"
-      >
-        <div
-          v-for="(cell, x) in row"
-          :key="x"
-          :class="getCellClass(cell, x, y)"
-          :title="`(${x},${y}) 養分:${cell.nutrientAmount}`"
-          @click="handleCellClick(x, y)"
-        >
-          <span class="cell-content">{{ getCellDisplay(cell, x, y) }}</span>
-          <span
-            v-if="getOverlapCount(x, y) > 1"
-            class="overlap-badge"
-          >{{
-            getOverlapCount(x, y)
-          }}</span>
-          <span
-            v-if="cell.type === 'soil' && getNutrientLevel(cell.nutrientAmount)"
-            :class="['nutrient-indicator', `nutrient-${getNutrientLevel(cell.nutrientAmount)}`]"
-          />
-        </div>
-      </div>
-    </div>
-
-    <div class="legend">
-      <span class="legend-item"><span class="cell cell-wall">壁</span> 壁</span>
-      <span class="legend-item"><span class="cell cell-soil">土</span> 土(クリックでdig)</span>
-      <span class="legend-item"><span class="cell cell-empty" /> 空</span>
-      <span class="legend-item"><span class="cell monster-nijirigoke">苔</span> ニジリゴケ</span>
-      <span class="legend-item"><span class="cell nijirigoke-bud">蕾</span> 蕾</span>
-      <span class="legend-item"><span class="cell nijirigoke-flower">花</span> 花</span>
-      <span class="legend-item"><span class="cell nijirigoke-withered">枯</span> 枯</span>
-      <span class="legend-item"><span class="cell monster-gajigajimushi">虫</span> ガジガジムシ</span>
-      <span class="legend-item"><span class="cell monster-lizardman">蜥</span> リザードマン</span>
-      <span class="legend-item"><span class="cell cell-empty nest-cell" /> 巣</span>
-      <span class="legend-item"><span class="cell hero-cell">勇</span> 勇者</span>
-      <span class="legend-item"><span class="cell hero-cell hero-returning">帰</span> 勇者(帰還中)</span>
-      <span class="legend-item"><span class="cell entrance-cell">門</span> 入口</span>
-      <span class="legend-item"><span class="cell demon-lord-cell">魔</span> 魔王</span>
-    </div>
-
-    <div class="legend nutrient-legend">
-      <strong>養分:</strong>
-      <span class="legend-item"><span class="nutrient-dot nutrient-low" /> 1-9 → 苔</span>
-      <span class="legend-item"><span class="nutrient-dot nutrient-mid" /> 10-16 → 虫</span>
-      <span class="legend-item"><span class="nutrient-dot nutrient-high" /> 17+ → 蜥</span>
-    </div>
+    <GridView
+      :game-state="gameState"
+      :config="gameConfig"
+      @cell-click="handleCellClick"
+    />
 
     <div class="events">
       <h3>イベントログ</h3>
@@ -764,6 +654,34 @@ body {
 .debug-ui {
   max-width: 800px;
   margin: 0 auto;
+}
+
+.presets {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.preset-btn {
+  background: #2a2a2a;
+  color: #ccc;
+  border: 1px solid #444;
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.preset-btn:hover {
+  background: #3a3a3a;
+}
+
+.preset-btn.active {
+  background: #4a90e2;
+  color: #fff;
+  border-color: #5aa0f2;
 }
 
 .scenarios {
