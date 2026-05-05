@@ -173,4 +173,56 @@ describe('App.vue (characterization before GridView extraction)', () => {
       })
     })
   })
+
+  describe('handlers', () => {
+    function findSummonHeroBtn(wrapper: ReturnType<typeof mount>) {
+      return wrapper.findAll('button').find((b) => b.text().includes('勇者を呼ぶ'))
+    }
+
+    it('triggerHeroPhase: clicking summon hero button shows placement banner', async () => {
+      const wrapper = mount(App)
+      const summonBtn = findSummonHeroBtn(wrapper)
+      expect(summonBtn).toBeDefined()
+      await summonBtn!.trigger('click')
+      expect(wrapper.find('.placement-banner').exists()).toBe(true)
+    })
+
+    it('handleCellClick (placement mode): clicking empty interior cell hides placement banner', async () => {
+      const wrapper = mount(App)
+      await findSummonHeroBtn(wrapper)!.trigger('click')
+      expect(wrapper.find('.placement-banner').exists()).toBe(true)
+      const allCells = wrapper.findAll('.grid .cell')
+      const emptyCell = allCells.find((c) => c.classes().includes('cell-empty'))
+      expect(emptyCell, 'small preset grid should have at least one empty interior cell').toBeDefined()
+      await emptyCell!.trigger('click')
+      expect(wrapper.find('.placement-banner').exists()).toBe(false)
+    })
+
+    it('handleCellClick (placement mode): clicking a wall cell keeps banner visible', async () => {
+      const wrapper = mount(App)
+      await findSummonHeroBtn(wrapper)!.trigger('click')
+      const wallCell = wrapper.findAll('.grid .cell').find((c) => c.classes().includes('cell-wall'))
+      expect(wallCell).toBeDefined()
+      await wallCell!.trigger('click')
+      expect(wrapper.find('.placement-banner').exists()).toBe(true)
+    })
+
+    it('handleReset: clicking Reset clears placement banner if active', async () => {
+      const wrapper = mount(App)
+      await findSummonHeroBtn(wrapper)!.trigger('click')
+      expect(wrapper.find('.placement-banner').exists()).toBe(true)
+      const resetBtn = wrapper.findAll('button').find((b) => b.text() === 'Reset')
+      await resetBtn!.trigger('click')
+      expect(wrapper.find('.placement-banner').exists()).toBe(false)
+    })
+
+    it('handleTick: clicking Tick changes visible state at least once', async () => {
+      const wrapper = mount(App)
+      const tickBtn = wrapper.findAll('button').find((b) => b.text() === 'Tick')
+      const before = wrapper.text()
+      await tickBtn!.trigger('click')
+      const after = wrapper.text()
+      expect(after).not.toBe(before)
+    })
+  })
 })
