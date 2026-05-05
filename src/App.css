@@ -1,0 +1,425 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 20px;
+  background: #1a1a1a;
+  color: #eee;
+  font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+}
+
+.debug-ui {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.presets {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.preset-btn {
+  background: #2a2a2a;
+  color: #ccc;
+  border: 1px solid #444;
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.preset-btn:hover {
+  background: #3a3a3a;
+}
+
+.preset-btn.active {
+  background: #4a90e2;
+  color: #fff;
+  border-color: #5aa0f2;
+}
+
+.scenarios {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.scenario-btn {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: #2a3a2a;
+  color: #8f8;
+  border: 1px solid #4a6a4a;
+  border-radius: 4px;
+}
+
+.scenario-btn:hover {
+  background: #3a4a3a;
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.controls {
+  margin-bottom: 1rem;
+}
+
+.controls button {
+  padding: 0.5rem 1rem;
+  margin-right: 0.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  background: #333;
+  color: #eee;
+  border: 1px solid #555;
+  border-radius: 4px;
+}
+
+.controls button:hover {
+  background: #444;
+}
+
+.controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: #222;
+  border-radius: 4px;
+}
+
+.status-row {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.dig-power {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+.dig-power-exhausted {
+  color: #ef5350;
+}
+
+.dig-power-warning {
+  font-size: 0.85em;
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.grid {
+  display: inline-block;
+  border: 2px solid #555;
+  background: #222;
+  margin-bottom: 1rem;
+}
+
+.row {
+  display: flex;
+}
+
+.cell {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  border: 1px solid #333;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.cell-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.overlap-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 0.9rem;
+  height: 0.9rem;
+  background: #ff5722;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: bold;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(25%, -25%);
+}
+
+.nutrient-indicator {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.nutrient-low {
+  background: #4caf50; /* 緑 - ニジリゴケ */
+}
+
+.nutrient-mid {
+  background: #5c6bc0; /* 青 - ガジガジムシ */
+}
+
+.nutrient-high {
+  background: #ef5350; /* 赤 - リザードマン */
+}
+
+.nutrient-legend {
+  margin-top: 0.5rem;
+}
+
+.nutrient-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+.cell-wall {
+  background: #444;
+  color: #888;
+  cursor: default;
+}
+
+.cell-soil {
+  background: #3d2817;
+  color: #8b6914;
+}
+
+.cell-soil:hover {
+  background: #4d3827;
+}
+
+.cell-empty {
+  background: #1a1a1a;
+  cursor: default;
+}
+
+.nijirigoke-bud {
+  background: #3a3a00;
+  color: #cccc00;
+}
+
+.nijirigoke-flower {
+  background: #3a1a2a;
+  color: #ff69b4;
+  animation: flower-glow 1s ease-in-out infinite;
+}
+
+@keyframes flower-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.nijirigoke-withered {
+  background: #2a2a2a;
+  color: #888888;
+}
+
+.monster-nijirigoke {
+  background: #1a4d1a;
+  color: #4caf50;
+}
+
+.monster-gajigajimushi {
+  background: #1a1a4d;
+  color: #5c6bc0;
+}
+
+.monster-lizardman {
+  background: #4d1a1a;
+  color: #ef5350;
+}
+
+.summon-hero-btn {
+  background: #4d4d1a;
+  color: #ffd700;
+  border: 1px solid #ffd700;
+  font-weight: bold;
+}
+
+.summon-hero-btn:hover {
+  background: #6a6a2a;
+}
+
+.hero-timer {
+  color: #88aaff;
+}
+
+.hero-timer-urgent {
+  color: #ff4444;
+  font-weight: bold;
+  animation: blink 0.5s ease-in-out infinite;
+}
+
+.placement-banner {
+  background: #4d1a4d;
+  color: #ff44ff;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  border: 2px solid #ff44ff;
+  animation: placement-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes placement-pulse {
+  0%, 100% { border-color: #ff44ff; }
+  50% { border-color: #aa22aa; }
+}
+
+.hero-cell {
+  background: #4d4d1a;
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.hero-returning {
+  background: #4d3a1a;
+  color: #ff8c00;
+  animation: hero-blink 0.5s ease-in-out infinite;
+}
+
+@keyframes hero-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.entrance-cell {
+  background: #2a2a4d;
+  color: #88aaff;
+}
+
+.demon-lord-cell {
+  background: #4d1a4d;
+  color: #ff44ff;
+  font-weight: bold;
+}
+
+.game-over-banner {
+  background: #c62828;
+  color: #fff;
+  text-align: center;
+  font-size: 2rem;
+  font-weight: bold;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  animation: game-over-pulse 1s ease-in-out infinite;
+}
+
+@keyframes game-over-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+.hero-status {
+  color: #ffd700;
+  margin-top: 0.25rem;
+}
+
+.hero-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.4rem;
+  background: #3a3a1a;
+  border: 1px solid #ffd700;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.nest-cell {
+  outline: 2px solid #ef5350;
+  outline-offset: -2px;
+  background-color: #2a1515 !important;
+}
+
+.cell-empty.nest-cell {
+  background-color: #2a1515 !important;
+}
+
+.legend {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.legend-item .cell {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.9rem;
+  cursor: default;
+}
+
+.events {
+  background: #222;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.events h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+}
+
+.event-list {
+  font-family: monospace;
+  font-size: 0.85rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.event {
+  padding: 0.25rem 0;
+  border-bottom: 1px solid #333;
+}
