@@ -38,7 +38,8 @@ export interface Monster {
 }
 
 // Cell types
-export type CellType = 'soil' | 'empty' | 'wall'
+// 'entrance': hero spawn/escape cell. Heroes can pass through; monsters cannot enter.
+export type CellType = 'soil' | 'empty' | 'wall' | 'entrance'
 
 // Grid cell
 export interface Cell {

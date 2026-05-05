@@ -72,8 +72,8 @@ export function createGameState(
     grid.push(row)
   }
 
-  // Make entrance cell empty (heroes spawn here, spec requires it to be empty)
-  grid[entrancePosition.y][entrancePosition.x] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }
+  // Entrance cell: heroes spawn/escape here, monsters cannot enter (isValidMove gates on type==='empty')
+  grid[entrancePosition.y][entrancePosition.x] = { type: 'entrance', nutrientAmount: 0, magicAmount: 0 }
 
   if (demonLordPosition) {
     grid[demonLordPosition.y][demonLordPosition.x] = { type: 'empty', nutrientAmount: 0, magicAmount: 0 }

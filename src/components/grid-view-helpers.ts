@@ -116,6 +116,8 @@ export function getCellDisplay(
       return '土'
     case 'empty':
       return '　'
+    case 'entrance':
+      return '門'
   }
 }
 

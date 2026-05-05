@@ -166,4 +166,13 @@ describe.each([
     expect(emitted).toBeTruthy()
     expect(emitted?.[0]).toEqual([{ x: 1, y: 1 }])
   })
+
+  it("entrance cell has type 'entrance' in state and displays 門", () => {
+    const { gameState, config } = makeStateAtSize()
+    const entranceX = Math.floor(width / 2)
+    expect(gameState.grid[0][entranceX].type).toBe('entrance')
+    const wrapper = mount(GridView, { props: { gameState, config } })
+    const entranceCell = wrapper.findAll('.grid .row')[0].findAll('.cell')[entranceX]
+    expect(entranceCell.text()).toBe('門')
+  })
 })

@@ -77,6 +77,12 @@ describe('Straight Movement', () => {
       const grid = createGrid(5, 5, 'soil')
       expect(isValidMove({ x: 2, y: 2 }, grid)).toBe(false)
     })
+
+    it('should return false for entrance cell (monsters cannot enter the door)', () => {
+      const grid = createGrid(5, 5, 'empty')
+      grid[2][2].type = 'entrance'
+      expect(isValidMove({ x: 2, y: 2 }, grid)).toBe(false)
+    })
   })
 
   describe('getTurnDirections', () => {
