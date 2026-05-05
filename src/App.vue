@@ -16,6 +16,8 @@ import {
 import { createDefaultConfig, type GameConfig } from './core/config'
 import { GRID_PRESETS, type GridPresetKey } from './core/constants'
 import GridView from './components/GridView.vue'
+import { formatEvent } from './event-format'
+import { computeMonsterSummary } from './monster-summary'
 
 function createConfigForPreset(key: GridPresetKey): GameConfig {
   const base = createDefaultConfig()
@@ -417,49 +419,8 @@ function loadScenario(state: GameState, message: string) {
 // シナリオモードでは固定乱数を使う
 let seededRandom: (() => number) | null = null
 
-function formatEvent(e: { type: string; [key: string]: unknown }): string {
-  switch (e.type) {
-    case 'MONSTER_SPAWNED':
-      return `${(e.monster as Monster).type} spawned`
-    case 'MONSTER_DIED':
-      return `${(e.monster as Monster).type} died (${e.cause})`
-    case 'PREDATION':
-      return `${(e.predator as Monster).type} ate ${(e.prey as Monster).type}`
-    case 'NUTRIENT_ABSORBED':
-      return `${(e.monster as Monster).type} absorbed ${e.amount}`
-    case 'NUTRIENT_RELEASED':
-      return `${(e.monster as Monster).type} released ${e.amount}`
-    case 'PHASE_TRANSITION':
-      return `${e.monsterId} ${e.oldPhase} → ${e.newPhase}`
-    case 'EGG_LAID':
-      return `${e.parentId} laid egg at (${(e.position as { x: number; y: number }).x},${(e.position as { x: number; y: number }).y})`
-    case 'EGG_HATCHED':
-      return `${e.offspringId} hatched at (${(e.position as { x: number; y: number }).x},${(e.position as { x: number; y: number }).y})`
-    case 'MONSTER_REPRODUCED':
-      return `${e.parentId} reproduced → ${(e.offspringIds as string[]).length} offspring`
-    case 'MONSTER_ATTACKED':
-      return `${e.monsterId} hit (dmg=${e.damage}, hp=${e.remainingLife})`
-    case 'HERO_SPAWNED':
-      return `勇者 ${e.heroId} 出現`
-    case 'HERO_PARTY_ANNOUNCED':
-      return `勇者パーティー ${e.partySize}人が接近中!`
-    case 'HERO_COMBAT':
-      return `勇者${e.heroId} vs ${e.monsterId} (勇者dmg=${e.heroDamage}, monster dmg=${e.monsterDamage})`
-    case 'HERO_DIED':
-      return `勇者 ${e.heroId} 撃破!`
-    case 'HERO_ESCAPED':
-      return `勇者 ${e.heroId} が脱出!`
-    case 'DEMON_LORD_FOUND':
-      return `勇者 ${e.heroId} が魔王を発見!`
-    case 'GAME_OVER':
-      return `GAME OVER - 勇者が魔王の情報を持ち帰った!`
-    default:
-      return e.type
-  }
-}
-
 // デバッグ: コンソールから window.__state でゲーム状態を確認可能
-(window as unknown as Record<string, unknown>).__state = gameState
+;(window as unknown as Record<string, unknown>).__state = gameState
 ;(window as unknown as Record<string, unknown>).__monsters = computed(() => {
   return gameState.value.monsters.map((m) => ({
     id: m.id,
@@ -475,19 +436,7 @@ function formatEvent(e: { type: string; [key: string]: unknown }): string {
 
 const totalNutrients = computed(() => getTotalNutrients(gameState.value))
 
-const monsterSummary = computed(() => {
-  const monsters = gameState.value.monsters
-  const summary: Record<string, { count: number; totalLife: number; totalCarrying: number }> = {}
-  for (const m of monsters) {
-    if (!summary[m.type]) {
-      summary[m.type] = { count: 0, totalLife: 0, totalCarrying: 0 }
-    }
-    summary[m.type].count++
-    summary[m.type].totalLife += m.life
-    summary[m.type].totalCarrying += m.carryingNutrient
-  }
-  return summary
-})
+const monsterSummary = computed(() => computeMonsterSummary(gameState.value.monsters))
 
 </script>
 
