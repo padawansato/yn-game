@@ -15,6 +15,8 @@ import { formatEvent } from './event-format'
 import { computeMonsterSummary } from './monster-summary'
 import { createConfigForPreset, createInitialState } from './state-init'
 import { SCENARIOS, type Scenario } from './scenarios'
+import { useKeyboardShortcuts } from './composables/useKeyboardShortcuts'
+import KeyboardHelpModal from './components/KeyboardHelpModal.vue'
 
 const activePresetKey = ref<GridPresetKey>('small')
 const gameConfig = ref<GameConfig>(createConfigForPreset(activePresetKey.value))
@@ -24,6 +26,7 @@ const isRunning = ref(false)
 const isPaused = ref(false)
 const isPlacingDemonLord = ref(false)
 const heroesTriggered = ref(false)
+const isHelpOpen = ref(false)
 
 let seededRandom: (() => number) | null = null
 let gameLoop: GameLoop | null = null
@@ -158,6 +161,35 @@ const scenarios = SCENARIOS.map((s) => ({
   setup: () => loadScenario(s),
 }))
 
+function togglePlay() {
+  if (!isRunning.value) startGame()
+  else if (isPaused.value) resumeGame()
+  else pauseGame()
+}
+
+useKeyboardShortcuts({
+  onTogglePlay: togglePlay,
+  onTick: handleTick,
+  onReset: handleReset,
+  onPresetSmall: () => selectPreset('small'),
+  onPresetLarge: () => selectPreset('large'),
+  onScenario: (idx) => scenarios[idx - 1]?.setup(),
+  onCallHero: () => {
+    if (!heroesTriggered.value) triggerHeroPhase()
+  },
+  onToggleHelp: () => {
+    isHelpOpen.value = !isHelpOpen.value
+  },
+  onEscape: () => {
+    if (isHelpOpen.value) {
+      isHelpOpen.value = false
+    } else if (isPlacingDemonLord.value) {
+      isPlacingDemonLord.value = false
+      events.value.unshift(`[CANCEL] 魔王配置をキャンセル`)
+    }
+  },
+})
+
 ;(window as unknown as Record<string, unknown>).__state = gameState
 ;(window as unknown as Record<string, unknown>).__monsters = computed(() =>
   gameState.value.monsters.map((m) => ({
@@ -221,7 +253,19 @@ const monsterSummary = computed(() => computeMonsterSummary(gameState.value.mons
       >
         勇者を呼ぶ
       </button>
+      <button
+        class="help-btn"
+        title="キーボードショートカット (?)"
+        @click="isHelpOpen = true"
+      >
+        ?
+      </button>
     </div>
+
+    <KeyboardHelpModal
+      :open="isHelpOpen"
+      @close="isHelpOpen = false"
+    />
 
     <div
       v-if="isPlacingDemonLord"
