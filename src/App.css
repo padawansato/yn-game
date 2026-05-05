@@ -282,6 +282,20 @@ h1 {
   background: #6a6a2a;
 }
 
+.help-btn {
+  background: #2a2a3a;
+  color: #aab;
+  border: 1px solid #557;
+  font-weight: bold;
+  min-width: 2.2rem;
+  padding: 0.5rem 0.6rem;
+  text-align: center;
+}
+
+.help-btn:hover {
+  background: #3a3a4a;
+}
+
 .hero-timer {
   color: #88aaff;
 }

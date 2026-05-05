@@ -225,4 +225,61 @@ describe('App.vue (characterization before GridView extraction)', () => {
       expect(after).not.toBe(before)
     })
   })
+
+  describe('keyboard shortcuts', () => {
+    function dispatch(key: string) {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key }))
+    }
+
+    it('? opens the keyboard help modal', async () => {
+      const wrapper = mount(App, { attachTo: document.body })
+      expect(wrapper.find('.kbd-help-modal').exists()).toBe(false)
+      dispatch('?')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('.kbd-help-modal').exists()).toBe(true)
+      wrapper.unmount()
+    })
+
+    it('Escape closes an open help modal', async () => {
+      const wrapper = mount(App, { attachTo: document.body })
+      dispatch('?')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('.kbd-help-modal').exists()).toBe(true)
+      dispatch('Escape')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('.kbd-help-modal').exists()).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('R triggers reset (clears placement banner if active)', async () => {
+      const wrapper = mount(App, { attachTo: document.body })
+      const summonBtn = wrapper.findAll('button').find((b) => b.text().includes('勇者を呼ぶ'))
+      await summonBtn!.trigger('click')
+      expect(wrapper.find('.placement-banner').exists()).toBe(true)
+      dispatch('r')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('.placement-banner').exists()).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('2 switches to the large preset', async () => {
+      const wrapper = mount(App, { attachTo: document.body })
+      dispatch('2')
+      await wrapper.vm.$nextTick()
+      const rows = wrapper.findAll('.grid .row')
+      expect(rows.length).toBe(40)
+      wrapper.unmount()
+    })
+
+    it('Escape cancels demon-lord placement mode', async () => {
+      const wrapper = mount(App, { attachTo: document.body })
+      const summonBtn = wrapper.findAll('button').find((b) => b.text().includes('勇者を呼ぶ'))
+      await summonBtn!.trigger('click')
+      expect(wrapper.find('.placement-banner').exists()).toBe(true)
+      dispatch('Escape')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.find('.placement-banner').exists()).toBe(false)
+      wrapper.unmount()
+    })
+  })
 })
